@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug STM32",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/workspace/stm32/build/Debug/stm32.elf",
+            "miDebuggerPath": "/usr/bin/gdb-multiarch",
+            "miDebuggerServerAddress": "localhost:3333",
+            "stopAtEntry": true,
+            "cwd": "/workspace",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "Start OpenOCD"
+        }
+    ]
+}

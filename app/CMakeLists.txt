@@ -1,0 +1,1 @@
+file(GLOB_RECURSE APP_SOURCES "${APP_DIR}/*.c")

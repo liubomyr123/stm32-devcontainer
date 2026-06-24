@@ -1,0 +1,31 @@
+{
+  "name": "STM32 Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/workspace",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind"
+  ],
+  "runArgs": [
+    "--privileged",
+    "--volume=/dev:/dev"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools",
+        "marus25.cortex-debug",
+        "llvm-vs-code-extensions.vscode-clangd"
+      ],
+      "settings": {
+        "cmake.generator": "Ninja",
+        "cmake.configureOnOpen": true,
+        "cmake.sourceDirectory": "/workspace",
+        "cortex-debug.armToolchainPath": "/usr/bin"
+      }
+    }
+  },
+  "postCreateCommand": "cmake --version && arm-none-eabi-gcc --version"
+}

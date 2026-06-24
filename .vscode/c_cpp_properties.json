@@ -1,0 +1,10 @@
+{
+    "configurations": [
+        {
+            "name": "STM32",
+            "compileCommands": "/workspace/stm32/build/Debug/compile_commands.json",
+            "intelliSenseMode": "gcc-arm"
+        }
+    ],
+    "version": 4
+}
