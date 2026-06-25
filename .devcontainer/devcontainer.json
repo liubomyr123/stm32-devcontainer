@@ -16,8 +16,12 @@
       "extensions": [
         "ms-vscode.cmake-tools",
         "ms-vscode.cpptools",
+        "mcu-debug.debug-tracker-vscode",
+        "mcu-debug.memory-view",
+        "mcu-debug.peripheral-viewer",
         "marus25.cortex-debug",
-        "llvm-vs-code-extensions.vscode-clangd"
+        "llvm-vs-code-extensions.vscode-clangd",
+        "streetsidesoftware.code-spell-checker"
       ],
       "settings": {
         "cmake.generator": "Ninja",
