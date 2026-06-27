@@ -8,7 +8,7 @@ extern "C" void app_main() {
     while (1) {
         if (btn.isPressed()) {
             led.toggle();
-            led.delay(100);
+            led.delay(500);
         } else {
             led.off();
         }
