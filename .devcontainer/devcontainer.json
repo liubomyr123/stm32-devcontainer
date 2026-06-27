@@ -31,5 +31,6 @@
       }
     }
   },
-  "postCreateCommand": "cmake --version && arm-none-eabi-gcc --version"
+  "postCreateCommand": "cmake --version && arm-none-eabi-gcc --version",
+  "remoteUser": "developer"
 }

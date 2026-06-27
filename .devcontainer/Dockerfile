@@ -2,6 +2,10 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+ARG USERNAME=developer
+ARG USER_UID=1000
+ARG USER_GID=1000
+
 # базові утиліти + ARM toolchain + OpenOCD за один шар
 RUN apt-get update && apt-get install -y \
     git \
@@ -28,5 +32,11 @@ RUN wget https://raw.githubusercontent.com/stlink-org/stlink/master/config/udev/
 
 # cleanup
 RUN apt-get clean
+
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+USER $USERNAME
 
 WORKDIR /workspace
