@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y \
     udev \
     clangd \
     usbutils \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # ST-Link udev rules
@@ -36,6 +37,8 @@ RUN apt-get clean
 RUN groupadd --gid $USER_GID $USERNAME \
     && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
     && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+RUN git config --system credential.helper store
 
 USER $USERNAME
 
