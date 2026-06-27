@@ -9,5 +9,9 @@
     "C_Cpp.intelliSenseEngine": "disabled",
     "[c]": {
         "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
-    }
+    },
+    "editor.formatOnSave": true,
+    "clangd.fallbackFlags": [
+        "--std=c++17"
+    ]
 }

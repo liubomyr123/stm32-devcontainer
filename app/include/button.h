@@ -2,7 +2,8 @@
 #define BUTTON_H
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #include "stm32f4xx_hal.h"
@@ -10,12 +11,13 @@ extern "C" {
 #ifdef __cplusplus
 }
 
-class Button {
-public:
+class Button
+{
+   public:
     Button(GPIO_TypeDef* port, uint16_t pin);
     bool isPressed();
 
-private:
+   private:
     GPIO_TypeDef* port_;
     uint16_t pin_;
 };

@@ -26,6 +26,8 @@ RUN apt-get update && apt-get install -y \
     usbutils \
     sudo \
     picocom \
+    clang-format \
+    clang-tidy \
     && rm -rf /var/lib/apt/lists/*
 
 # ST-Link udev rules

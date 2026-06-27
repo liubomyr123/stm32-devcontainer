@@ -5,11 +5,11 @@
 1. Відкрий WSL термінал
 2. Перейди в папку проекту:
 ```bash
-cd ~/projects/stm32-template
+    cd ~/projects/stm32-template
 ```
 3. Відкрий VS Code з цієї папки:
 ```bash
-code .
+    code .
 ```
 4. У VS Code натисни `><` внизу зліва → **Reopen in Container**
 
@@ -21,15 +21,12 @@ code .
 
 1. Отримай шлях до проекту — відкрий WSL термінал і виконай:
 ```bash
-wslpath -w ~/projects/stm32-template
+    wslpath -w ~/projects/stm32-template
 ```
-
-Приклад відповіді:
-
-```bash
-\\wsl.localhost\Ubuntu-22.04\home\liubomyr\projects\stm32-template
+    Приклад відповіді:
 ```
-
+    \\wsl.localhost\Ubuntu-22.04\home\liubomyr\projects\stm32-template
+```
 2. Відкрий File Explorer на Windows і перейди за цією адресою в папку `stm32/`
 3. Відкрий `stm32.ioc` у CubeMX
 4. В секції **Project Manager**:
@@ -72,12 +69,45 @@ chmod +x ./flash.sh   # тільки перший раз
 
 ---
 
+## Моніторинг UART
+
+```bash
+chmod +x ./monitor.sh   # тільки перший раз
+./monitor.sh
+```
+
+Щоб вийти з монітора — натисни `Ctrl+A` потім `Ctrl+X`.
+
+---
+
 ## Дебаг
 
 1. Підключи ST-Link до WSL (див. вище)
 2. Натисни **F5** у VS Code — openocd запуститься автоматично
 3. Дебагер зупиниться на початку `main()`
 4. Використовуй стандартні кнопки VS Code: Step Over, Step Into, Continue
+
+---
+
+## Форматування коду
+
+```bash
+chmod +x ./format.sh   # тільки перший раз
+./format.sh
+```
+
+> Форматується тільки код в папці `app/`. Код згенерований CubeMX не чіпається.
+
+---
+
+## Перевірка якості коду (lint)
+
+```bash
+chmod +x ./lint.sh   # тільки перший раз
+./lint.sh
+```
+
+> Аналізується тільки код в папці `app/`.
 
 ---
 
@@ -88,12 +118,18 @@ chmod +x ./flash.sh   # тільки перший раз
 ├── .devcontainer/       # Docker конфігурація
 ├── .vscode/             # VS Code налаштування
 ├── app/                 # Твій кастомний код
+│   ├── include/         # Заголовки
+│   └── src/             # Реалізація
 ├── stm32/               # Код згенерований CubeMX
 ├── build.sh             # Скрипт білду
 ├── flash.sh             # Скрипт прошивки
+├── monitor.sh           # Скрипт моніторингу UART
+├── format.sh            # Скрипт форматування
+├── lint.sh              # Скрипт перевірки якості
 └── CMakeLists.txt       # Рутовий CMake
 ```
 
+---
 
 ## Troubleshooting
 
@@ -120,12 +156,12 @@ docker volume rm vscode
 1. Перевір чи ST-Link підключений фізично
 2. Виконай в **PowerShell як адміністратор**:
 ```powershell
-usbipd list  # перевір чи є ST-Link в списку
-usbipd attach --wsl --hardware-id 0483:374b
+    usbipd list  # перевір чи є ST-Link в списку
+    usbipd attach --wsl --hardware-id 0483:374b
 ```
 3. Перевір в контейнері:
 ```bash
-lsusb  # має з'явитись ST-Link
+    lsusb  # має з'явитись ST-Link
 ```
 
 > ST-Link треба підключати заново після кожного перезавантаження Windows
