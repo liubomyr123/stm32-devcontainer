@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y \
     clangd \
     usbutils \
     sudo \
+    picocom \
     && rm -rf /var/lib/apt/lists/*
 
 # ST-Link udev rules

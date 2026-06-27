@@ -3,7 +3,8 @@
     "clangd.arguments": [
         "--compile-commands-dir=/workspace/stm32/build/Debug",
         "--background-index",
-        "--clang-tidy"
+        "--clang-tidy",
+        "--query-driver=/usr/bin/arm-none-eabi-g++,/usr/bin/arm-none-eabi-gcc"
     ],
     "C_Cpp.intelliSenseEngine": "disabled",
     "[c]": {
