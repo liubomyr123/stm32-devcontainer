@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "include/led.h"
 #include "include/logger.h"
+#include "include/uart_config.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,27 +46,40 @@
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart3_rx;
 
 /* Definitions for StateMachine */
 osThreadId_t StateMachineHandle;
+osThreadId_t UartTaskHandle;
 const osThreadAttr_t StateMachine_attributes = {
   .name = "StateMachine",
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+const osThreadAttr_t UartTask_attr = {
+  .name = "UARTTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* USER CODE BEGIN PV */
-
+// #define UART_RX_BUF_SIZE 64
+uint8_t uart3_rx_buf[UART_RX_BUF_SIZE];
+osMessageQueueId_t uartRawQueueHandle;
+osMessageQueueId_t uartCmdQueueHandle;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_USART3_UART_Init(void);
 void StartStateMachineTask(void *argument);
 
 /* USER CODE BEGIN PFP */
-
+extern void UartTask(void* argument);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -102,8 +116,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART1_UART_Init();
   MX_TIM3_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
   LOG_INFO("TAG", "Hello!");
   
@@ -116,6 +132,12 @@ int main(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
   // STBY2
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_SET);
+
+  // Запускаємо DMA прийом на USART3
+  HAL_UART_Receive_DMA(&huart3, uart3_rx_buf, UART_RX_BUF_SIZE);
+
+  // Вмикаємо IDLE interrupt
+  __HAL_UART_ENABLE_IT(&huart3, UART_IT_IDLE);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -135,6 +157,8 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
+  uartRawQueueHandle = osMessageQueueNew(10, sizeof(uint16_t), NULL);
+  uartCmdQueueHandle = osMessageQueueNew(10, sizeof(UartCmd), NULL);
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -143,6 +167,7 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  UartTaskHandle = osThreadNew(UartTask, NULL, &UartTask_attr);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -303,6 +328,55 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * @brief USART3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART3_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 115200;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -379,25 +453,9 @@ void StartStateMachineTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
   (void)argument;
-  // extern void app_main(void);
-  // app_main();
-  
-  // FL вперед
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);   // FL_IN1
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);  // FL_IN2
-
-  // FR вперед
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);   // FR_IN1
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_RESET);  // FR_IN2
-
-  // 50% швидкості
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 50);
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 50);
-
-  /* Infinite loop */
-  for(;;) {
-      osDelay(1000);
-  }
+  extern void app_main(void);
+  app_main();
+  // /* Infinite loop */
   /* USER CODE END 5 */
 }
 
