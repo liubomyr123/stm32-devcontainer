@@ -51,18 +51,18 @@ DMA_HandleTypeDef hdma_usart3_rx;
 
 /* Definitions for StateMachine */
 osThreadId_t StateMachineHandle;
-osThreadId_t UartTaskHandle;
 const osThreadAttr_t StateMachine_attributes = {
   .name = "StateMachine",
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* USER CODE BEGIN PV */
+osThreadId_t UartTaskHandle;
 const osThreadAttr_t UartTask_attr = {
   .name = "UARTTask",
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* USER CODE BEGIN PV */
 // #define UART_RX_BUF_SIZE 64
 uint8_t uart3_rx_buf[UART_RX_BUF_SIZE];
 osMessageQueueId_t uartRawQueueHandle;
@@ -399,7 +399,7 @@ static void MX_GPIO_Init(void)
                           |GPIO_PIN_2|GPIO_PIN_3, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_RESET);
@@ -419,8 +419,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA1 PA2 PA3 PA4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4;
+  /*Configure GPIO pins : PA2 PA3 PA4 PA5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -453,9 +453,31 @@ void StartStateMachineTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
   (void)argument;
-  extern void app_main(void);
-  app_main();
-  // /* Infinite loop */
+  // extern void app_main(void);
+  // app_main();
+
+  // FL вперед
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
+  // FR вперед
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_RESET);
+  // RL вперед
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET);
+  // RR вперед
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+
+  // 50% швидкості на всіх каналах
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 50);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 50);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 50);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 50);
+
+  for(;;) {
+      osDelay(1000);
+  }
   /* USER CODE END 5 */
 }
 
