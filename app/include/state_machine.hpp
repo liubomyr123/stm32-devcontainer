@@ -13,7 +13,8 @@ enum class State
 struct DriveParams
 {
     UartCmdType direction = CMD_STOP;
-    uint8_t speed = 0;
+    int8_t throttle = 0;  // -100..+100
+    int8_t steering = 0;  // -100..+100
 };
 
 class StateMachine
@@ -24,8 +25,8 @@ class StateMachine
     void updateState(const State);
 
     const DriveParams& getDriveParams() const;
-    void setDriveParams(UartCmdType direction, uint8_t speed);
-    const char* stateToString(State state);
+    void setDriveParams(UartCmdType direction, int8_t throttle, int8_t steering);
+    static const char* stateToString(State state);
 
    private:
     StateMachine() = default;

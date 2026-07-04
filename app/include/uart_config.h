@@ -17,7 +17,7 @@ typedef enum
 typedef struct
 {
     UartCmdType type;
-    uint8_t value;  // 0-100
+    int8_t value;  // 0-100
 } UartCmd;
 
 const char* cmdTypeToString(UartCmdType type);

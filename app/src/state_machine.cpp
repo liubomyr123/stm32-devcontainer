@@ -29,10 +29,11 @@ const DriveParams& StateMachine::getDriveParams() const
     return driveParams_;
 }
 
-void StateMachine::setDriveParams(UartCmdType direction, uint8_t speed)
+void StateMachine::setDriveParams(UartCmdType direction, int8_t throttle, int8_t steering)
 {
     driveParams_.direction = direction;
-    driveParams_.speed = speed;
+    driveParams_.throttle = throttle;
+    driveParams_.steering = steering;
 }
 
 const char* StateMachine::stateToString(State state)
