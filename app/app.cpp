@@ -17,7 +17,7 @@ extern "C" void app_main()
     LOG_INFO("APP", "Started!");
     while (true)
     {
-        if (osMessageQueueGet(uartCmdQueueHandle, &cmd, NULL, 0) == osOK)
+        if (osMessageQueueGet(uartCmdQueueHandle, &cmd, nullptr, 0) == osOK)
         {
             LOG_INFO("APP", "Data: cmd=%s speed=%d", cmdTypeToString(cmd.type), cmd.value);
 
@@ -30,14 +30,14 @@ extern "C" void app_main()
                         StateMachine::instance().setDriveParams(cmd.type, cmd.value, 0);
                         StateMachine::instance().updateState(State::DRIVING);
                     }
-                    else if (cmd.type == CMD_LEFT || cmd.type == CMD_RIGHT)
-                    {
-                        // skip...
-                    }
-                    else if (cmd.type == CMD_STOP || cmd.type == CMD_UNKNOWN)
-                    {
-                        // also skip...
-                    }
+                    // else if (cmd.type == CMD_LEFT || cmd.type == CMD_RIGHT)
+                    // {
+                    //     // skip...
+                    // }
+                    // else if (cmd.type == CMD_STOP || cmd.type == CMD_UNKNOWN)
+                    // {
+                    //     // also skip...
+                    // }
                     break;
                 }
 

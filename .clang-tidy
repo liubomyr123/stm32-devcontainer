@@ -27,6 +27,6 @@ Checks: >
   -readability-convert-member-functions-to-static,
   -modernize-use-using
 
-HeaderFilterRegex: '(^|/)(app|include|src)/'
+HeaderFilterRegex: '^/workspace/app/.*'
 
 WarningsAsErrors: clang-analyzer-*

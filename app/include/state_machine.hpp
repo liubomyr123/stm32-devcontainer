@@ -22,7 +22,7 @@ class StateMachine
    public:
     static StateMachine& instance();
     State getState() const;
-    void updateState(const State);
+    void updateState(const State newState);
 
     const DriveParams& getDriveParams() const;
     void setDriveParams(UartCmdType direction, int8_t throttle, int8_t steering);

@@ -84,14 +84,14 @@ void MotorController::apply(UartCmdType direction, int8_t throttle, int8_t steer
             setMotor(Motor::RR, CMD_BACKWARD, throttle);
             break;
         }
-        case UartCmdType::CMD_LEFT:
-        {
-            break;
-        }
-        case UartCmdType::CMD_RIGHT:
-        {
-            break;
-        }
+        // case UartCmdType::CMD_LEFT:
+        // {
+        //     break;
+        // }
+        // case UartCmdType::CMD_RIGHT:
+        // {
+        //     break;
+        // }
         case UartCmdType::CMD_STOP:
         {
             setMotor(Motor::FL, CMD_STOP, 0);
@@ -100,10 +100,10 @@ void MotorController::apply(UartCmdType direction, int8_t throttle, int8_t steer
             setMotor(Motor::RR, CMD_STOP, 0);
             break;
         }
-        case UartCmdType::CMD_UNKNOWN:
-        {
-            break;
-        }
+        // case UartCmdType::CMD_UNKNOWN:
+        // {
+        //     break;
+        // }
         default:
         {
             break;

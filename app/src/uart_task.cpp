@@ -7,6 +7,7 @@
 
 extern osMessageQueueId_t uartRawQueueHandle;
 extern osMessageQueueId_t uartCmdQueueHandle;
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
 extern uint8_t uart3_rx_buf[];
 extern DMA_HandleTypeDef hdma_usart3_rx;
 extern UART_HandleTypeDef huart3;
@@ -21,7 +22,7 @@ static UartCmd parseCmd(const char* buf)
     }
     else if (buf[1] == ':')
     {
-        cmd.value = (uint8_t)atoi(&buf[2]);
+        cmd.value = static_cast<int8_t>(atoi(&buf[2]));
         switch (buf[0])
         {
             case 'F':
@@ -52,7 +53,7 @@ extern "C" void UartTask(void* argument)
 
     while (true)
     {
-        if (osMessageQueueGet(uartRawQueueHandle, &flag, NULL, osWaitForever) == osOK)
+        if (osMessageQueueGet(uartRawQueueHandle, &flag, nullptr, osWaitForever) == osOK)
         {
             uint16_t len = UART_RX_BUF_SIZE - __HAL_DMA_GET_COUNTER(&hdma_usart3_rx);
             if (len > 0)
