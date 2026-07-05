@@ -1,5 +1,5 @@
 # Build
-stm32/build/
+stm32_project/stm32/build/
 
 # VS Code
 .vscode/ipch/
