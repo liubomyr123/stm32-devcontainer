@@ -11,3 +11,4 @@ find /workspace/stm32_project/app -name "*.cpp" -o -name "*.hpp" | xargs clang-t
     --extra-arg=-I/usr/lib/arm-none-eabi/include
 
 echo "==> Done!"
+

@@ -6,3 +6,4 @@ find /workspace/stm32_project/app -name "*.cpp" -o -name "*.hpp" -o -name "*.h" 
 
 echo "==> Done!"
 
+
