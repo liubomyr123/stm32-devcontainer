@@ -31,6 +31,6 @@
       }
     }
   },
-  "postCreateCommand": "cmake --version && arm-none-eabi-gcc --version",
+  "postCreateCommand": "sed -i 's/\\r//' /workspace/stm32_project/*.sh && cmake --version && arm-none-eabi-gcc --version",
   "remoteUser": "developer"
 }
