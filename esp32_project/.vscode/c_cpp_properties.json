@@ -1,0 +1,10 @@
+{
+    "configurations": [
+        {
+            "name": "ESP32",
+            "compileCommands": "/workspace/esp32_project/esp/build/compile_commands.json",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}

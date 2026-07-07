@@ -1,0 +1,23 @@
+{
+  "name": "ESP32 Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/workspace/esp32_project",
+  "mounts": [
+    "source=${localWorkspaceFolder}/..,target=/workspace,type=bind"
+  ],
+  "runArgs": [
+    "--privileged",
+    "--volume=/dev:/dev"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools"
+      ]
+    }
+  },
+  "postCreateCommand": "echo 'source /opt/esp/idf/export.sh' >> /root/.bashrc && sed -i 's/\\r//' /workspace/esp32_project/*.sh"
+}

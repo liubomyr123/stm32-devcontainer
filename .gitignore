@@ -1,5 +1,8 @@
 # Build
 stm32_project/stm32/build/
+stm32_project/logs/
+esp32_project/esp/build/
+esp32_project/logs/
 
 # VS Code
 .vscode/ipch/
@@ -12,5 +15,3 @@ cmake_install.cmake
 # Python
 __pycache__/
 *.pyc
-
-logs/
