@@ -19,5 +19,5 @@
       ]
     }
   },
-  "postCreateCommand": "echo 'source /opt/esp/idf/export.sh' >> /root/.bashrc && sed -i 's/\\r//' /workspace/esp32_project/*.sh"
+  "postCreateCommand": "git submodule update --init && echo 'source /opt/esp/idf/export.sh' >> /root/.bashrc && sed -i 's/\\r//' /workspace/esp32_project/*.sh"
 }
