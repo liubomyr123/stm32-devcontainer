@@ -1,6 +1,13 @@
+file(GLOB APP_SOURCES "src/*.cpp")
+
 idf_component_register(
-    SRCS "main.cpp"
-    INCLUDE_DIRS "." "../esp"
+    SRCS 
+        "app.cpp"
+        ${APP_SOURCES}
+    INCLUDE_DIRS 
+        "."
+        "includes"
+        "../esp"
     PRIV_REQUIRES 
         esp_wifi
         esp_event

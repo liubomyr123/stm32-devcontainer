@@ -1,0 +1,18 @@
+#pragma once
+
+#include <esp_err.h>
+
+class CameraManager
+{
+   private:
+    static constexpr const char* TAG = "camera";
+    bool initialized = false;
+
+   public:
+    CameraManager();
+    ~CameraManager();
+
+    bool init(esp_err_t& error);
+    bool deinit(esp_err_t& error);
+    bool reinit(esp_err_t& error);
+};
