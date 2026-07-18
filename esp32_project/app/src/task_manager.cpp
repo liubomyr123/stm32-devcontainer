@@ -1,8 +1,5 @@
 #include "task_manager.hpp"
 
-#include <esp_camera.h>
-#include <esp_log.h>
-
 #include "app_context.hpp"
 
 TaskManager::TaskManager(/* args */)
@@ -21,7 +18,7 @@ bool TaskManager::init(esp_err_t& error)
         return true;
     }
 
-    if (xTaskCreate(uart_task, "uart", 2048, nullptr, 5, nullptr) != pdPASS)
+    if (xTaskCreate(uart_task, "uart", 4096, nullptr, 5, nullptr) != pdPASS)
     {
         ESP_LOGE(TAG, "Failed to create uart task");
         error = ESP_ERR_NO_MEM;
@@ -43,10 +40,32 @@ bool TaskManager::init(esp_err_t& error)
 
 void TaskManager::uart_task(void* arg)
 {
+    auto& ctx = AppContext::get();
+    uint8_t buf[UART_BUF_SIZE];
+    uart_event_t event;
+
     while (true)
     {
-        // TODO: надсилати команди на STM32
-        vTaskDelay(pdMS_TO_TICKS(10));
+        if (ctx.uart_manager.queueReceived(event))
+        {
+            switch (event.type)
+            {
+                case UART_PATTERN_DET:
+                {
+                    ctx.uart_manager.read_patern(buf, sizeof(buf));
+                    break;
+                }
+                case UART_DATA:
+                {
+                    // ctx.uart_manager.read_data(buf, sizeof(buf), event.size);
+                    break;
+                }
+                default:
+                {
+                    break;
+                }
+            }
+        }
     }
 }
 

@@ -28,6 +28,12 @@ extern "C" void app_main()
         return;
     }
 
+    esp_err_t uart_manager_error;
+    if (!ctx.uart_manager.init(uart_manager_error))
+    {
+        return;
+    }
+
     esp_err_t task_error;
     if (!ctx.task_manager.init(task_error))
     {

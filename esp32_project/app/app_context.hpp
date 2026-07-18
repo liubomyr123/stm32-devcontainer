@@ -5,6 +5,7 @@
 #include "camera_manager.hpp"
 #include "memory_manager.hpp"
 #include "task_manager.hpp"
+#include "uart_manager.hpp"
 #include "webserver.hpp"
 #include "wifi_manager.hpp"
 
@@ -28,6 +29,7 @@ class AppContext
     CameraManager camera_manager;
     Webserver server;
     TaskManager task_manager;
+    UartManager uart_manager;
 
     static constexpr const char* WIFI_SSID = "MyCar";
     static constexpr const char* WIFI_PASS = "12345678";

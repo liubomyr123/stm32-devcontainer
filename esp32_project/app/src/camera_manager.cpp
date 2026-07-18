@@ -1,12 +1,5 @@
 #include "camera_manager.hpp"
 
-#include <esp_camera.h>
-#include <esp_log.h>
-
-#include "board_config.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-
 CameraManager::CameraManager()
 {
 }

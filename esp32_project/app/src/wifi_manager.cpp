@@ -1,15 +1,6 @@
 #include "wifi_manager.hpp"
 
-#include <esp_event.h>
-#include <esp_log.h>
-#include <esp_netif.h>
-#include <esp_wifi.h>
-#include <esp_wifi_default.h>
-
-#include <cstring>
-
 #include "app_context.hpp"
-#include "esp_event.h"
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id,
                                void* event_data)

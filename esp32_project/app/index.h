@@ -1,7 +1,6 @@
-// index.h
 #pragma once
 
-const char* html = R"rawhtml(
+static const char* html = R"rawhtml(
 <!DOCTYPE html>
 <html>
 <head>

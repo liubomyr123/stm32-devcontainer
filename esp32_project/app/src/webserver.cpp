@@ -1,10 +1,7 @@
 #include "webserver.hpp"
 
-#include <esp_log.h>
-
 #include "app_context.hpp"
 #include "index.h"
-#include "lwip/sockets.h"
 
 Webserver::Webserver(/* args */)
 {
@@ -45,6 +42,8 @@ esp_err_t Webserver::root_handler(httpd_req_t* req)
 
 esp_err_t Webserver::cmd_handler(httpd_req_t* req)
 {
+    auto& ctx = AppContext::get();
+
     esp_err_t error;
 
     char cmd[32] = {};
@@ -54,7 +53,7 @@ esp_err_t Webserver::cmd_handler(httpd_req_t* req)
         if (httpd_query_key_value(cmd, "v", val, sizeof(val)) == ESP_OK)
         {
             ESP_LOGI(TAG, "Command: %s", val);
-            // TODO: надіслати на STM32 через UART
+            ctx.uart_manager.send(val);
         }
     }
 
