@@ -5,17 +5,31 @@
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id,
                                void* event_data)
 {
+    auto& ctx = AppContext::get();
+
     if (event_id == WIFI_EVENT_AP_STACONNECTED)
     {
         wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*)event_data;
         ESP_LOGI("wifi", "Client connected, MAC: %02x:%02x:%02x:%02x:%02x:%02x", event->mac[0],
                  event->mac[1], event->mac[2], event->mac[3], event->mac[4], event->mac[5]);
+
+        char entry[64];
+        snprintf(entry, sizeof(entry), "[%lu] Client connected: %02x:%02x:%02x:%02x:%02x:%02x\n",
+                 esp_log_timestamp(), event->mac[0], event->mac[1], event->mac[2], event->mac[3],
+                 event->mac[4], event->mac[5]);
+        ctx.memory_manager.log(entry);
     }
     else if (event_id == WIFI_EVENT_AP_STADISCONNECTED)
     {
         wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*)event_data;
         ESP_LOGI("wifi", "Client disconnected, MAC: %02x:%02x:%02x:%02x:%02x:%02x", event->mac[0],
                  event->mac[1], event->mac[2], event->mac[3], event->mac[4], event->mac[5]);
+
+        char entry[64];
+        snprintf(entry, sizeof(entry), "[%lu] Client disconnected: %02x:%02x:%02x:%02x:%02x:%02x\n",
+                 esp_log_timestamp(), event->mac[0], event->mac[1], event->mac[2], event->mac[3],
+                 event->mac[4], event->mac[5]);
+        ctx.memory_manager.log(entry);
     }
 }
 

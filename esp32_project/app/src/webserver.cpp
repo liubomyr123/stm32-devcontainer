@@ -1,7 +1,7 @@
 #include "webserver.hpp"
 
 #include "app_context.hpp"
-#include "index.h"
+#include "html/fallback.h"
 
 Webserver::Webserver(/* args */)
 {
@@ -13,6 +13,8 @@ Webserver::~Webserver()
 
 esp_err_t Webserver::root_handler(httpd_req_t* req)
 {
+    auto& ctx = AppContext::get();
+
     ESP_LOGI(TAG, "Client connected: %s", req->uri);
 
     int sock = httpd_req_to_sockfd(req);
@@ -30,13 +32,15 @@ esp_err_t Webserver::root_handler(httpd_req_t* req)
         return ESP_FAIL;
     }
 
-    error = httpd_resp_send(req, html, HTTPD_RESP_USE_STRLEN);
-    if (error != ESP_OK)
+    if (!ctx.memory_manager.serveFileChunked("/sdcard/index.html", req, error))
     {
-        ESP_LOGE(TAG, "httpd_resp_send: %s", esp_err_to_name(error));
-        return ESP_FAIL;
+        error = httpd_resp_send(req, fallback_html, HTTPD_RESP_USE_STRLEN);
+        if (error != ESP_OK)
+        {
+            ESP_LOGE(TAG, "httpd_resp_send: %s", esp_err_to_name(error));
+            return ESP_FAIL;
+        }
     }
-
     return ESP_OK;
 }
 
@@ -54,6 +58,10 @@ esp_err_t Webserver::cmd_handler(httpd_req_t* req)
         {
             ESP_LOGI(TAG, "Command: %s", val);
             ctx.uart_manager.send(val);
+
+            char entry[64];
+            snprintf(entry, sizeof(entry), "[%lu] CMD: %s\n", esp_log_timestamp(), val);
+            ctx.memory_manager.log(entry);
         }
     }
 

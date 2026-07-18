@@ -1,8 +1,11 @@
 #pragma once
 
+#include <esp_log.h>
+
 #include <atomic>
 
 #include "camera_manager.hpp"
+#include "freertos/semphr.h"
 #include "memory_manager.hpp"
 #include "task_manager.hpp"
 #include "uart_manager.hpp"
@@ -35,4 +38,5 @@ class AppContext
     static constexpr const char* WIFI_PASS = "12345678";
     std::atomic<bool> stream_active{false};
     std::atomic<int> stream_socket{-1};
+    // SemaphoreHandle_t camera_mutex = xSemaphoreCreateMutex();
 };

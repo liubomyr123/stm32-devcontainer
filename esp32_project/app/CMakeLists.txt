@@ -17,4 +17,6 @@ idf_component_register(
         esp32-camera
         lwip
         driver
+        fatfs
+        sdmmc
 )

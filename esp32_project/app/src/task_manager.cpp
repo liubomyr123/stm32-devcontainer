@@ -74,13 +74,13 @@ void TaskManager::camera_task(void* arg)
     while (true)
     {
         auto& ctx = AppContext::get();
-        if (!ctx.stream_active || ctx.stream_socket < 0)
+        if (!ctx.stream_active || ctx.stream_socket < 0 || !ctx.camera_manager.isInitialized())
         {
             vTaskDelay(pdMS_TO_TICKS(33));
             continue;
         }
         camera_fb_t* fb = esp_camera_fb_get();
-        ESP_LOGI(TAG, "Frame captured: %d bytes", fb ? fb->len : 0);
+        // ESP_LOGI(TAG, "Frame captured: %d bytes", fb ? fb->len : 0);
         if (!fb)
         {
             vTaskDelay(pdMS_TO_TICKS(10));

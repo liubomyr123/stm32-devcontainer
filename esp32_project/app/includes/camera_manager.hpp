@@ -21,4 +21,9 @@ class CameraManager
     bool init(esp_err_t& error);
     bool deinit(esp_err_t& error);
     bool reinit(esp_err_t& error);
+
+    bool isInitialized()
+    {
+        return initialized;
+    }
 };

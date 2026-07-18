@@ -1,5 +1,7 @@
 #include "camera_manager.hpp"
 
+#include "app_context.hpp"
+
 CameraManager::CameraManager()
 {
 }
@@ -15,6 +17,8 @@ bool CameraManager::init(esp_err_t& error)
         ESP_LOGW(TAG, "Already initialized");
         return true;
     }
+
+    auto& ctx = AppContext::get();
 
     // // Вмикаємо живлення камери через GPIO32
     // gpio_set_direction(GPIO_NUM_32, GPIO_MODE_OUTPUT);
@@ -58,6 +62,8 @@ bool CameraManager::init(esp_err_t& error)
     initialized = true;
     ESP_LOGI(TAG, "Camera initialized OK");
 
+    ctx.memory_manager.log("Stream started\n");
+
     return true;
 }
 
@@ -69,6 +75,8 @@ bool CameraManager::deinit(esp_err_t& error)
         return true;
     }
 
+    auto& ctx = AppContext::get();
+
     error = esp_camera_deinit();
     if (error != ESP_OK)
     {
@@ -79,11 +87,19 @@ bool CameraManager::deinit(esp_err_t& error)
     initialized = false;
     ESP_LOGI(TAG, "Camera deinitialized");
 
+    ctx.memory_manager.log("Stream stopped\n");
+
     return true;
 }
 
 bool CameraManager::reinit(esp_err_t& error)
 {
+    if (initialized)
+    {
+        deinit(error);
+    }
+
+    initialized = false;
     vTaskDelay(pdMS_TO_TICKS(200));
     return init(error);
 }

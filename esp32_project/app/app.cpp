@@ -10,6 +10,22 @@ extern "C" void app_main()
         return;
     }
 
+    esp_err_t sd_error;
+    if (!ctx.memory_manager.mountSD(sd_error))
+    {
+        return;
+    }
+
+    if (!ctx.memory_manager.initLogFile(sd_error))
+    {
+        return;
+    }
+
+    if (!ctx.memory_manager.listFilesRecursive())
+    {
+        return;
+    }
+
     esp_err_t camera_error;
     if (!ctx.camera_manager.init(camera_error))
     {
