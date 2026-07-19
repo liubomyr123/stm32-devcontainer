@@ -74,15 +74,22 @@ void TaskManager::camera_task(void* arg)
     while (true)
     {
         auto& ctx = AppContext::get();
-        if (!ctx.stream_active || ctx.stream_socket < 0 || !ctx.camera_manager.isInitialized())
+        if (!ctx.stream_active || ctx.stream_socket < 0)
         {
             vTaskDelay(pdMS_TO_TICKS(33));
             continue;
         }
+
+        if (xSemaphoreTake(ctx.camera_mutex, pdMS_TO_TICKS(100)) != pdTRUE)
+        {
+            continue;
+        }
+
         camera_fb_t* fb = esp_camera_fb_get();
-        // ESP_LOGI(TAG, "Frame captured: %d bytes", fb ? fb->len : 0);
+
         if (!fb)
         {
+            xSemaphoreGive(ctx.camera_mutex);
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
@@ -95,9 +102,25 @@ void TaskManager::camera_task(void* arg)
                                     strlen(header), 0);
         if (ret < 0)
         {
+            if (errno == EAGAIN)
+            {
+                // Тимчасова помилка - пропускаємо кадр
+                esp_camera_fb_return(fb);
+                xSemaphoreGive(ctx.camera_mutex);
+                vTaskDelay(pdMS_TO_TICKS(100));
+                continue;
+            }
+
+            // Фатальна помилка - зупиняємо стрім
             ctx.stream_active = false;
             ctx.stream_socket = -1;
             esp_camera_fb_return(fb);
+            xSemaphoreGive(ctx.camera_mutex);
+            // esp_err_t err;
+            // if (!ctx.camera_manager.deinit(err))
+            // {
+            //     ESP_LOGE(TAG, "deinit failed: %s", esp_err_to_name(err));
+            // }
             continue;
         }
 
@@ -105,6 +128,8 @@ void TaskManager::camera_task(void* arg)
                           fb->len, 0);
         httpd_socket_send(ctx.server.get_server_handle(), ctx.stream_socket, "\r\n", 2, 0);
         esp_camera_fb_return(fb);
+        xSemaphoreGive(ctx.camera_mutex);
+
         vTaskDelay(pdMS_TO_TICKS(33));
     }
 }

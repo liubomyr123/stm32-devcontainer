@@ -86,14 +86,24 @@ esp_err_t Webserver::stream_stop_handler(httpd_req_t* req)
     }
     else
     {
+        if (xSemaphoreTake(ctx.camera_mutex, pdMS_TO_TICKS(500)) != pdTRUE)
+        {
+            ESP_LOGW(TAG, "Timeout waiting for camera mutex");
+            httpd_resp_send(req, "Stream busy, try again", HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+
         ctx.stream_active = false;
         ctx.stream_socket = -1;
 
         if (!ctx.camera_manager.deinit(error))
         {
             ESP_LOGE(TAG, "deinit: %s", esp_err_to_name(error));
+            xSemaphoreGive(ctx.camera_mutex);
             return ESP_FAIL;
         }
+
+        xSemaphoreGive(ctx.camera_mutex);
 
         ESP_LOGI(TAG, "Stream stopped");
     }
@@ -116,8 +126,8 @@ esp_err_t Webserver::stream_handler(httpd_req_t* req)
     if (ctx.stream_active)
     {
         ESP_LOGW(TAG, "Stream already active on socket %d", ctx.stream_socket.load());
-        ctx.stream_active = false;
-        ctx.stream_socket = -1;
+        httpd_resp_send(req, "Stream already active", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
     }
 
     int sock = httpd_req_to_sockfd(req);
@@ -128,9 +138,12 @@ esp_err_t Webserver::stream_handler(httpd_req_t* req)
         "\r\n";
     send(sock, headers, strlen(headers), 0);
 
-    if (!ctx.camera_manager.reinit(error))
+    if (!ctx.camera_manager.init(error))
     {
-        ESP_LOGE(TAG, "reinit: %s", esp_err_to_name(error));
+        ESP_LOGE(TAG, "init: %s", esp_err_to_name(error));
+        ctx.stream_active = false;
+        ctx.stream_socket = -1;
+        close(sock);
         return ESP_FAIL;
     }
 

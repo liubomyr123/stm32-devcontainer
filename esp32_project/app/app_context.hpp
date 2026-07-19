@@ -38,5 +38,5 @@ class AppContext
     static constexpr const char* WIFI_PASS = "12345678";
     std::atomic<bool> stream_active{false};
     std::atomic<int> stream_socket{-1};
-    // SemaphoreHandle_t camera_mutex = xSemaphoreCreateMutex();
+    SemaphoreHandle_t camera_mutex = xSemaphoreCreateMutex();
 };

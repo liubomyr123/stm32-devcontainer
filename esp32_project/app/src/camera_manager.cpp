@@ -91,15 +91,3 @@ bool CameraManager::deinit(esp_err_t& error)
 
     return true;
 }
-
-bool CameraManager::reinit(esp_err_t& error)
-{
-    if (initialized)
-    {
-        deinit(error);
-    }
-
-    initialized = false;
-    vTaskDelay(pdMS_TO_TICKS(200));
-    return init(error);
-}

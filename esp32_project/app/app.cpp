@@ -26,12 +26,6 @@ extern "C" void app_main()
         return;
     }
 
-    esp_err_t camera_error;
-    if (!ctx.camera_manager.init(camera_error))
-    {
-        return;
-    }
-
     esp_err_t wifi_error;
     if (!ctx.wifi_manager.init(wifi_error))
     {
