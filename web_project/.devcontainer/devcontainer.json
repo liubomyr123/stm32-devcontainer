@@ -1,0 +1,33 @@
+{
+    "name": "Web Projects",
+    "image": "node:20",
+    "workspaceFolder": "/workspace/web_project",
+    "mounts": [
+        "source=${localWorkspaceFolder}/..,target=/workspace,type=bind",
+        "source=/usr/bin/wslpath,target=/usr/bin/wslpath,type=bind"
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode"
+            ],
+            "settings": {
+                "editor.formatOnSave": true,
+                "editor.codeActionsOnSave": {
+                    "source.fixAll.eslint": "always"
+                },
+                "[typescriptreact]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                },
+                "[typescript]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                },
+                "[css]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                }   
+            }
+        }
+    },
+    "postCreateCommand": "git config --global --add safe.directory /workspace"
+}
