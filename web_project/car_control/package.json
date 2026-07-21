@@ -4,13 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-      "dev": "vite",
-      "build": "tsc -b && vite build",
-      "lint": "eslint .",
-      "preview": "vite preview",
-      "serve": "npm run build && npx serve dist -l 3000"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "serve": "npm run build && npx serve dist -l 3000"
   },
   "dependencies": {
+    "nipplejs": "^1.0.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

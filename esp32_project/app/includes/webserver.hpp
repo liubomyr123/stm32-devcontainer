@@ -18,6 +18,7 @@ class Webserver
     static esp_err_t cmd_handler(httpd_req_t* req);
     static esp_err_t stream_stop_handler(httpd_req_t* req);
     static esp_err_t stream_handler(httpd_req_t* req);
+    static esp_err_t ws_handler(httpd_req_t* req);
 
    public:
     Webserver(/* args */);

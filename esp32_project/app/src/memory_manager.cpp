@@ -131,7 +131,7 @@ bool MemoryManager::serveFileChunked(const char* path, httpd_req_t* req, esp_err
         return false;
     }
 
-    char chunk[512];
+    char chunk[4096];
     size_t read_len;
     while ((read_len = fread(chunk, 1, sizeof(chunk), f)) > 0)
     {
@@ -139,6 +139,8 @@ bool MemoryManager::serveFileChunked(const char* path, httpd_req_t* req, esp_err
         if (error != ESP_OK)
         {
             ESP_LOGE(TAG, "httpd_resp_send_chunk: %s", esp_err_to_name(error));
+            fclose(f);
+            return false;
         }
     }
     error = httpd_resp_send_chunk(req, nullptr, 0);

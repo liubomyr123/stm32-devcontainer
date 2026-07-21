@@ -13,6 +13,9 @@ Webserver::~Webserver()
 
 esp_err_t Webserver::root_handler(httpd_req_t* req)
 {
+    httpd_resp_set_type(req, "text/html");
+    httpd_resp_set_hdr(req, "Content-Encoding", "identity");
+
     auto& ctx = AppContext::get();
 
     ESP_LOGI(TAG, "Client connected: %s", req->uri);
@@ -154,6 +157,47 @@ esp_err_t Webserver::stream_handler(httpd_req_t* req)
     return ESP_OK;
 }
 
+esp_err_t Webserver::ws_handler(httpd_req_t* req)
+{
+    if (req->method == HTTP_GET)
+    {
+        ESP_LOGI(TAG, "WebSocket handshake");
+        return ESP_OK;
+    }
+
+    auto& ctx = AppContext::get();
+    httpd_ws_frame_t ws_pkt = {};
+    uint8_t buf[64] = {};
+    ws_pkt.payload = buf;
+    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+
+    esp_err_t error = httpd_ws_recv_frame(req, &ws_pkt, sizeof(buf));
+    if (error != ESP_OK)
+    {
+        ESP_LOGW(TAG, "WebSocket closed or error: %s", esp_err_to_name(error));
+        ctx.uart_manager.send("S");
+        return error;
+    }
+
+    // якщо клієнт надіслав CLOSE фрейм
+    if (ws_pkt.type == HTTPD_WS_TYPE_CLOSE)
+    {
+        ESP_LOGI(TAG, "WebSocket closed by client");
+        ctx.uart_manager.send("S");
+        return ESP_OK;
+    }
+
+    buf[ws_pkt.len] = '\0';
+    ESP_LOGI(TAG, "WS cmd: %s", buf);
+    ctx.uart_manager.send((char*)buf);
+
+    char entry[128];
+    snprintf(entry, sizeof(entry), "[%lu] WS CMD: %s\n", esp_log_timestamp(), buf);
+    ctx.memory_manager.log(entry);
+
+    return ESP_OK;
+}
+
 bool Webserver::start_webserver(esp_err_t& error)
 {
     if (initialized)
@@ -182,6 +226,9 @@ bool Webserver::start_webserver(esp_err_t& error)
         .method = HTTP_GET,
         .handler = root_handler,
         .user_ctx = nullptr,
+        .is_websocket = false,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = nullptr,
     };
 
     error = httpd_register_uri_handler(server_handle, &root);
@@ -196,6 +243,9 @@ bool Webserver::start_webserver(esp_err_t& error)
         .method = HTTP_GET,
         .handler = cmd_handler,
         .user_ctx = nullptr,
+        .is_websocket = false,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = nullptr,
     };
     error = httpd_register_uri_handler(server_handle, &cmd);
     if (error != ESP_OK)
@@ -209,6 +259,9 @@ bool Webserver::start_webserver(esp_err_t& error)
         .method = HTTP_GET,
         .handler = stream_handler,
         .user_ctx = nullptr,
+        .is_websocket = false,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = nullptr,
     };
     error = httpd_register_uri_handler(server_handle, &stream);
     if (error != ESP_OK)
@@ -222,11 +275,30 @@ bool Webserver::start_webserver(esp_err_t& error)
         .method = HTTP_GET,
         .handler = stream_stop_handler,
         .user_ctx = nullptr,
+        .is_websocket = false,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = nullptr,
     };
     error = httpd_register_uri_handler(server_handle, &stream_stop);
     if (error != ESP_OK)
     {
         ESP_LOGE(TAG, "httpd_register_uri_handler/stream_stop_handler: %s", esp_err_to_name(error));
+        return false;
+    }
+
+    httpd_uri_t ws = {
+        .uri = "/ws",
+        .method = HTTP_GET,
+        .handler = ws_handler,
+        .user_ctx = nullptr,
+        .is_websocket = true,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = nullptr,
+    };
+    error = httpd_register_uri_handler(server_handle, &ws);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_register_uri_handler/ws_handler: %s", esp_err_to_name(error));
         return false;
     }
 
