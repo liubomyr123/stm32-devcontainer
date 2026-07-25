@@ -10,7 +10,8 @@
         "vscode": {
             "extensions": [
                 "dbaeumer.vscode-eslint",
-                "esbenp.prettier-vscode"
+                "esbenp.prettier-vscode",
+                "redhat.vscode-xml"
             ],
             "settings": {
                 "editor.formatOnSave": true,
@@ -25,7 +26,13 @@
                 },
                 "[css]": {
                     "editor.defaultFormatter": "esbenp.prettier-vscode"
-                }   
+                },
+                "[svg]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                },
+                "[xml]": {
+                    "editor.defaultFormatter": "redhat.vscode-xml"
+                }
             }
         }
     },

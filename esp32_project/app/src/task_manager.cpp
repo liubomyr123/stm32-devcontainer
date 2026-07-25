@@ -76,7 +76,7 @@ void TaskManager::camera_task(void* arg)
         auto& ctx = AppContext::get();
         if (!ctx.stream_active || ctx.stream_socket < 0)
         {
-            vTaskDelay(pdMS_TO_TICKS(33));
+            vTaskDelay(pdMS_TO_TICKS(100));
             continue;
         }
 
@@ -90,7 +90,7 @@ void TaskManager::camera_task(void* arg)
         if (!fb)
         {
             xSemaphoreGive(ctx.camera_mutex);
-            vTaskDelay(pdMS_TO_TICKS(10));
+            vTaskDelay(pdMS_TO_TICKS(100));
             continue;
         }
 
@@ -107,7 +107,7 @@ void TaskManager::camera_task(void* arg)
                 // Тимчасова помилка - пропускаємо кадр
                 esp_camera_fb_return(fb);
                 xSemaphoreGive(ctx.camera_mutex);
-                vTaskDelay(pdMS_TO_TICKS(100));
+                vTaskDelay(pdMS_TO_TICKS(200));
                 continue;
             }
 
@@ -130,6 +130,6 @@ void TaskManager::camera_task(void* arg)
         esp_camera_fb_return(fb);
         xSemaphoreGive(ctx.camera_mutex);
 
-        vTaskDelay(pdMS_TO_TICKS(33));
+        vTaskDelay(pdMS_TO_TICKS(150));
     }
 }
