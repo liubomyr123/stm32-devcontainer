@@ -1,6 +1,7 @@
 #include "webserver.hpp"
 
 #include "app_context.hpp"
+#include "cJSON.h"
 #include "html/fallback.h"
 
 Webserver::Webserver(/* args */)
@@ -167,7 +168,7 @@ esp_err_t Webserver::ws_handler(httpd_req_t* req)
 
     auto& ctx = AppContext::get();
     httpd_ws_frame_t ws_pkt = {};
-    uint8_t buf[64] = {};
+    uint8_t buf[128] = {};
     ws_pkt.payload = buf;
     ws_pkt.type = HTTPD_WS_TYPE_TEXT;
 
@@ -179,7 +180,6 @@ esp_err_t Webserver::ws_handler(httpd_req_t* req)
         return error;
     }
 
-    // якщо клієнт надіслав CLOSE фрейм
     if (ws_pkt.type == HTTPD_WS_TYPE_CLOSE)
     {
         ESP_LOGI(TAG, "WebSocket closed by client");
@@ -188,12 +188,31 @@ esp_err_t Webserver::ws_handler(httpd_req_t* req)
     }
 
     buf[ws_pkt.len] = '\0';
-    ESP_LOGI(TAG, "WS cmd: %s", buf);
-    ctx.uart_manager.send((char*)buf);
+    cJSON* json = cJSON_Parse((char*)buf);
+    if (json)
+    {
+        cJSON* f = cJSON_GetObjectItem(json, "f");
+        cJSON* b = cJSON_GetObjectItem(json, "b");
+        cJSON* r = cJSON_GetObjectItem(json, "r");
+        cJSON* l = cJSON_GetObjectItem(json, "l");
+        cJSON* px = cJSON_GetObjectItem(json, "px");
+        cJSON* py = cJSON_GetObjectItem(json, "py");
 
-    char entry[128];
-    snprintf(entry, sizeof(entry), "[%lu] WS CMD: %s\n", esp_log_timestamp(), buf);
-    ctx.memory_manager.log(entry);
+        if (f && b && r && l && px && py)
+        {
+            ESP_LOGI(TAG, "F:%d B:%d R:%d L:%d PX:%d PY:%d",  //
+                     f->valueint, b->valueint, r->valueint,   //
+                     l->valueint, px->valueint, py->valueint);
+
+            char cmd[64];
+            snprintf(cmd, sizeof(cmd), "F:%d B:%d R:%d L:%d", f->valueint, b->valueint, r->valueint,
+                     l->valueint);
+            ctx.uart_manager.send(cmd);
+            ctx.memory_manager.log(cmd);
+        }
+
+        cJSON_Delete(json);
+    }
 
     return ESP_OK;
 }

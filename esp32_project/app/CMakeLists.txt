@@ -19,4 +19,5 @@ idf_component_register(
         driver
         fatfs
         sdmmc
+        json
 )
