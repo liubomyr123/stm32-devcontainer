@@ -60,10 +60,18 @@ extern "C" void UartTask(void* argument)
             {
                 uart3_rx_buf[len] = '\0';
                 UartCmd cmd = parseCmd((const char*)uart3_rx_buf);
-                LOG_INFO("UART", "Received: %s / cmd=%s value=%d", uart3_rx_buf,
-                         cmdTypeToString(cmd.type), cmd.value);
 
-                osMessageQueuePut(uartCmdQueueHandle, &cmd, 0, 0);
+                if (cmd.type == CMD_UNKNOWN)
+                {
+                    // skip
+                }
+                else
+                {
+                    LOG_INFO("UART", "Received: %s / cmd=%s value=%d", uart3_rx_buf,
+                             cmdTypeToString(cmd.type), cmd.value);
+
+                    osMessageQueuePut(uartCmdQueueHandle, &cmd, 0, 0);
+                }
             }
 
             HAL_UART_AbortReceive(&huart3);             // Reset DMA before read data

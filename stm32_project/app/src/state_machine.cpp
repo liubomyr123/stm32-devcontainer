@@ -1,7 +1,5 @@
 #include "state_machine.hpp"
 
-#include "include/logger.hpp"
-
 StateMachine& StateMachine::instance()
 {
     static StateMachine instance;
@@ -20,7 +18,7 @@ void StateMachine::updateState(const State newState)
         return;
     }
 
-    LOG_INFO("SM", "%s → %s", stateToString(currentState_), stateToString(newState));
+    LOG_INFO(TAG, "%s → %s", stateToString(currentState_), stateToString(newState));
     currentState_ = newState;
 }
 

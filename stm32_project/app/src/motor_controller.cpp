@@ -1,10 +1,5 @@
 #include "include/motor_controller.hpp"
 
-#include <array>
-
-#include "main.h"
-#include "uart_config.h"
-
 extern TIM_HandleTypeDef htim3;
 
 MotorController& MotorController::instance()

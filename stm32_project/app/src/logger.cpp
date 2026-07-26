@@ -1,9 +1,12 @@
 #include "include/logger.hpp"
 
-#include <cstdarg>
-#include <cstdio>
-
 extern UART_HandleTypeDef huart1;
+static osMutexId_t log_mutex = nullptr;
+
+extern "C" void logger_init()
+{
+    log_mutex = osMutexNew(nullptr);
+}
 
 extern "C" int __io_putchar(int ch)
 {
@@ -62,6 +65,11 @@ void Logger::log(LogLevel level, const char* tag, const char* file, int line, co
         return;
     }
 
+    if (log_mutex != nullptr)
+    {
+        osMutexAcquire(log_mutex, osWaitForever);
+    }
+
     // Форматований час
     uint32_t tick = HAL_GetTick();
     uint32_t ms = tick % 1000;
@@ -83,6 +91,11 @@ void Logger::log(LogLevel level, const char* tag, const char* file, int line, co
            (unsigned int)sec, (unsigned int)ms, levelToString(level), tag, filename, line);
     vprintf(fmt, args);
     printf("\r\n");
+
+    if (log_mutex != nullptr)
+    {
+        osMutexRelease(log_mutex);
+    }
 }
 
 const char* Logger::levelToString(LogLevel level)

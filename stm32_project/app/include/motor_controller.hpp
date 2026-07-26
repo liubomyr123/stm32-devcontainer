@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 
+#include "main.h"
 #include "uart_config.h"
 
 enum class Motor
@@ -21,6 +23,7 @@ class MotorController
     void stop();
 
    private:
+    static constexpr const char* TAG = "MOTOR_CONTROLLER";
     MotorController() = default;
     void setLeft(int16_t speed);
     void setRight(int16_t speed);

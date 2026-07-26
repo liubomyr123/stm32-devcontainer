@@ -1,6 +1,7 @@
 #ifndef STATE_MACHINE_HPP
 #define STATE_MACHINE_HPP
 
+#include "include/logger.hpp"
 #include "include/uart_config.h"
 
 enum class State
@@ -29,6 +30,7 @@ class StateMachine
     static const char* stateToString(State state);
 
    private:
+    static constexpr const char* TAG = "SM";
     StateMachine() = default;
     State currentState_ = State::IDLE;
     DriveParams driveParams_;
