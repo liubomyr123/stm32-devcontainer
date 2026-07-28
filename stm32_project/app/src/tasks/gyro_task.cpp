@@ -5,29 +5,25 @@
 #include "include/logger.hpp"
 #include "include/mpu6050.hpp"
 
+extern I2C_HandleTypeDef hi2c1;
+
 extern "C" void GyroTask(void* argument)
 {
     (void)argument;
 
     LOG_INFO("GYRO", "Task started");
 
-    if (!MPU6050::instance().waitReady())
-    {
-        vTaskDelete(nullptr);
-    }
+    MPU6050 mpu{&hi2c1};
 
-    if (!MPU6050::instance().init())
+    if (!mpu.init())
     {
         vTaskDelete(nullptr);
     }
 
     while (true)
     {
-        float pitch;
-        float roll;
-        MPU6050::instance().readAccel(pitch, roll);
-
-        LOG_INFO("GYRO", "Pitch=%.1f Roll=%.1f deg", pitch, roll);
+        mpu.readAll();
+        LOG_INFO("GYRO", "Pitch=%.1f Roll=%.1f", mpu.getPitch(), mpu.getRoll());
 
         vTaskDelay(pdMS_TO_TICKS(50));  // 50 Hz
     }

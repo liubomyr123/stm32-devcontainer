@@ -68,7 +68,7 @@ const osThreadAttr_t UartTask_attr = {
 osThreadId_t GyroTaskHandle;
 const osThreadAttr_t GyroTask_attr = {
   .name = "GyroTask",
-  .stack_size = 256 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 // #define UART_RX_BUF_SIZE 64

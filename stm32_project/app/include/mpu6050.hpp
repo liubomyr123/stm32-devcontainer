@@ -6,35 +6,103 @@
 #include "cmsis_os.h"
 #include "include/logger.hpp"
 
-// I2C адреса MPU6050 (AD0 = GND → 0x68, зсув на 1 для HAL)
-#define MPU6050_I2C_ADDR (0x68 << 1)
+// MPU6050 structure
+typedef struct
+{
+    int16_t Accel_X_RAW;
+    int16_t Accel_Y_RAW;
+    int16_t Accel_Z_RAW;
+    double Ax;
+    double Ay;
+    double Az;
 
-// Register 117 (0x75) - WHO_AM_I - повертає 0x68 якщо датчик знайдений
-#define MPU6050_REG_WHO_AM_I 0x75
-// Register 117 (0x75) - WHO_AM_I - очікуване значення при успішному підключенні
-#define MPU6050_WHO_AM_I_VALUE 0x68
+    int16_t Gyro_X_RAW;
+    int16_t Gyro_Y_RAW;
+    int16_t Gyro_Z_RAW;
+    double Gx;
+    double Gy;
+    double Gz;
 
-// Register 107 (0x6B) - PWR_MGMT_1 - управління живленням, при старті = sleep mode
-#define MPU6050_REG_PWR_MGMT_1 0x6B
+    float Temperature;
 
-// Register 67 (0x43) - GYRO_XOUT_H - початок регістрів гіроскопу (X, Y, Z по 2 байти)
-#define MPU6050_REG_GYRO_XOUT_H 0x43
-// Register 59 (0x3B) - ACCEL_XOUT_H - початок регістрів акселерометру (X, Y, Z по 2 байти)
-#define MPU6050_REG_ACCEL_XOUT_H 0x3B
+    double KalmanAngleX;  // Roll
+    double KalmanAngleY;  // Pitch
+} MPU6050_t;
+
+// Kalman structure
+typedef struct
+{
+    double Q_angle;
+    double Q_bias;
+    double R_measure;
+    double angle;
+    double bias;
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    double P[2][2];
+} Kalman_t;
+
+#define RAD_TO_DEG 57.295779513082320876798154814105
+
+#define WHO_AM_I_REG 0x75
+#define PWR_MGMT_1_REG 0x6B
+#define SMPLRT_DIV_REG 0x19
+#define ACCEL_CONFIG_REG 0x1C
+#define ACCEL_XOUT_H_REG 0x3B
+#define TEMP_OUT_H_REG 0x41
+#define GYRO_CONFIG_REG 0x1B
+#define GYRO_XOUT_H_REG 0x43
+
+// Setup MPU6050
+#define MPU6050_ADDR 0xD0
 
 class MPU6050
 {
    public:
-    static MPU6050& instance();
+    bool init() const;
 
-    bool init();
-    bool readAccel(float& pitch, float& roll);
-    bool readGyro(float& Gx_dps, float& Gy_dps, float& Gz_dps,  //
-                  float offset_x, float offset_y, float offset_z);
-    bool calibrateGyro(float& offset_x, float& offset_y, float& offset_z);
-    bool waitReady();
+    void readAccel();
+
+    void readGyro();
+
+    void readTemp();
+
+    void readAll();
+
+    const double& getPitch() const
+    {
+        return data.KalmanAngleY;
+    }
+    const double& getRoll() const
+    {
+        return data.KalmanAngleX;
+    }
+    const float& getTemp() const
+    {
+        return data.Temperature;
+    }
+
+    MPU6050(I2C_HandleTypeDef* hi2c1_) : hi2c1(hi2c1_)
+    {
+        KalmanX.Q_angle = 0.001F;
+        KalmanX.Q_bias = 0.003F;
+        KalmanX.R_measure = 0.03F;
+
+        KalmanY.Q_angle = 0.001F;
+        KalmanY.Q_bias = 0.003F;
+        KalmanY.R_measure = 0.03F;
+    };
 
    private:
     static constexpr const char* TAG = "mpu6050";
-    MPU6050() = default;
+
+    double kalmanGetAngle(Kalman_t* Kalman, double newAngle, double newRate, double dt);
+
+    MPU6050_t data{};
+    I2C_HandleTypeDef* hi2c1;
+    uint32_t timer{};
+    Kalman_t KalmanX{};
+    Kalman_t KalmanY{};
+
+    const uint16_t i2c_timeout = 100;
+    const double Accel_Z_corrector = 14418.0;
 };
