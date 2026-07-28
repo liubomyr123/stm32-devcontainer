@@ -127,7 +127,32 @@ bool UartManager::read_data(uint8_t* buf, size_t len, size_t size)
     return true;
 }
 
-bool UartManager::queueReceived(uart_event_t& event)
+bool UartManager::queue_received(uart_event_t& event)
 {
     return xQueueReceive(uart_queue, &event, portMAX_DELAY);
+}
+
+bool UartManager::read_gyro(GyroPacket& pkt)
+{
+    int read_len = uart_read_bytes(UART_PORT,           //
+                                   (uint8_t*)&pkt,      //
+                                   sizeof(GyroPacket),  //
+                                   pdMS_TO_TICKS(10));
+    if (read_len == 0)
+    {
+        ESP_LOGW(TAG, "read_gyro: timeout or empty buffer");
+        return false;
+    }
+    if (read_len < 0)
+    {
+        ESP_LOGE(TAG, "read_gyro: error %d", read_len);
+        return false;
+    }
+    if (read_len != sizeof(GyroPacket))
+    {
+        return false;
+    }
+
+    ESP_LOGI(TAG, "Gyro RX: pitch=%.1f roll=%.1f", pkt.pitch, pkt.roll);
+    return true;
 }

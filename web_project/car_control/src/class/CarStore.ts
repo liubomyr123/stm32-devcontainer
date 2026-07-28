@@ -16,9 +16,8 @@ class CarStore {
   };
 
   private gyroControls: GyroControls = {
-    x: 0,
-    y: 0,
-    z: 0,
+    pitch: 0,
+    roll: 0,
   };
 
   private listeners: Set<() => void> = new Set();

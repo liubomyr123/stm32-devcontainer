@@ -8,12 +8,21 @@ export function useCarConnection() {
 
   useEffect(() => {
     onMessage((data) => {
-      const telemetry = JSON.parse(data);
-      carStore.updateGyroControls({
-        x: telemetry.gx,
-        y: telemetry.gy,
-        z: telemetry.gz,
-      });
+      try {
+        const telemetry = JSON.parse(data);
+        console.log(telemetry);
+        if (
+          typeof telemetry.pitch === 'number' &&
+          typeof telemetry.roll === 'number'
+        ) {
+          carStore.updateGyroControls({
+            pitch: telemetry.pitch,
+            roll: telemetry.roll,
+          });
+        }
+      } catch {
+        console.warn('Invalid telemetry:', data);
+      }
     });
   }, []);
 

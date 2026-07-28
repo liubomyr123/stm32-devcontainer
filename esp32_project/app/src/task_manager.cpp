@@ -46,7 +46,7 @@ void TaskManager::uart_task(void* arg)
 
     while (true)
     {
-        if (ctx.uart_manager.queueReceived(event))
+        if (ctx.uart_manager.queue_received(event))
         {
             switch (event.type)
             {
@@ -57,7 +57,15 @@ void TaskManager::uart_task(void* arg)
                 }
                 case UART_DATA:
                 {
-                    // ctx.uart_manager.read_data(buf, sizeof(buf), event.size);
+                    GyroPacket pkt;
+                    // ctx.uart_manager.read_gyro(pkt);
+                    if (ctx.uart_manager.read_gyro(pkt))
+                    {
+                        char json[64];
+                        snprintf(json, sizeof(json), "{\"pitch\":%.1f,\"roll\":%.1f}", pkt.pitch,
+                                 pkt.roll);
+                        ctx.server.send_web_socket(json);
+                    }
                     break;
                 }
                 default:

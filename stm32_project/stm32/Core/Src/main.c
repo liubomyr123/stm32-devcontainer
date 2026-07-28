@@ -92,6 +92,7 @@ extern void UartTask(void* argument);
 extern void GyroTask(void* argument);
 
 extern void logger_init(void);
+extern void uart_manager_init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -159,6 +160,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   logger_init();
+  uart_manager_init();
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */

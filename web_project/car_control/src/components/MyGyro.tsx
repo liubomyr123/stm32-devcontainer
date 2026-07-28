@@ -18,9 +18,8 @@ function MyGyro() {
         gap: '10px',
       }}
     >
-      <div>X: {gyro.x}</div>
-      <div>Y: {gyro.y}</div>
-      <div>Z: {gyro.z}</div>
+      <div>Pitch: {gyro.pitch}</div>
+      <div>Roll: {gyro.roll}</div>
     </div>
   );
 }

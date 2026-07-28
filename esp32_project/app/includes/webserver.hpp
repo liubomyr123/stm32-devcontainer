@@ -11,7 +11,7 @@ class Webserver
    private:
     static constexpr const char* TAG = "web";
     bool initialized = false;
-
+    int ws_client_fd = -1;
     httpd_handle_t server_handle = nullptr;
 
     static esp_err_t root_handler(httpd_req_t* req);
@@ -26,4 +26,5 @@ class Webserver
 
     bool start_webserver(esp_err_t& error);
     httpd_handle_t get_server_handle();
+    bool send_web_socket(const char* data);
 };

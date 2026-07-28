@@ -8,9 +8,8 @@ export interface CarControls {
 }
 
 export interface GyroControls {
-  x: number;
-  y: number;
-  z: number;
+  pitch: number;
+  roll: number;
 }
 
 export interface CamControls {

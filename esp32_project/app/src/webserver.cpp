@@ -160,9 +160,12 @@ esp_err_t Webserver::stream_handler(httpd_req_t* req)
 
 esp_err_t Webserver::ws_handler(httpd_req_t* req)
 {
+    Webserver* self = static_cast<Webserver*>(req->user_ctx);
+
     if (req->method == HTTP_GET)
     {
         ESP_LOGI(TAG, "WebSocket handshake");
+        self->ws_client_fd = httpd_req_to_sockfd(req);
         return ESP_OK;
     }
 
@@ -309,7 +312,7 @@ bool Webserver::start_webserver(esp_err_t& error)
         .uri = "/ws",
         .method = HTTP_GET,
         .handler = ws_handler,
-        .user_ctx = nullptr,
+        .user_ctx = this,
         .is_websocket = true,
         .handle_ws_control_frames = false,
         .supported_subprotocol = nullptr,
@@ -331,4 +334,27 @@ bool Webserver::start_webserver(esp_err_t& error)
 httpd_handle_t Webserver::get_server_handle()
 {
     return server_handle;
+}
+
+bool Webserver::send_web_socket(const char* data)
+{
+    if (ws_client_fd == -1)
+    {
+        ESP_LOGW(TAG, "ws_client_fd = -1");
+        return false;
+    }
+
+    httpd_ws_frame_t ws_pkt = {};
+    ws_pkt.payload = (uint8_t*)data;
+    ws_pkt.len = strlen(data);
+    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+
+    esp_err_t error = httpd_ws_send_frame_async(server_handle, ws_client_fd, &ws_pkt);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "send_web_socket: %s", esp_err_to_name(error));
+        ws_client_fd = -1;
+        return false;
+    }
+    return true;
 }

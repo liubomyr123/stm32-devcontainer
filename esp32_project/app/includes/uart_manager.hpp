@@ -13,6 +13,12 @@
 #define UART_BAUD 115200
 #define UART_BUF_SIZE 256
 
+struct GyroPacket
+{
+    float pitch;
+    float roll;
+};
+
 class UartManager
 {
    private:
@@ -28,5 +34,6 @@ class UartManager
     bool send(const char* cmd);
     bool read_patern(uint8_t* buf, size_t len);
     bool read_data(uint8_t* buf, size_t len, size_t size);
-    bool queueReceived(uart_event_t& event);
+    bool queue_received(uart_event_t& event);
+    bool read_gyro(GyroPacket& pkt);
 };
