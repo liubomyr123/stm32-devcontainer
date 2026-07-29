@@ -16,7 +16,13 @@ function App() {
         minHeight: '100vh',
       }}
     >
-      <h1>Car Controls</h1>
+      <h1
+        style={{
+          padding: '20px',
+        }}
+      >
+        Car Controls
+      </h1>
       <div
         style={{
           display: 'flex',
