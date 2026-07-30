@@ -1,0 +1,10 @@
+:root {
+  --bg-dark: #1a1a1a;
+  --bg-panel: #111;
+  --border-color: #444;
+  --text-dim: #666;
+  --radius: 8px;
+
+  --btn-bg: #444;
+  --btn-active: #666;
+}

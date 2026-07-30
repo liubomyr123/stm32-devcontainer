@@ -6,7 +6,7 @@
 
 body {
   font-family: Arial, sans-serif;
-  background: #1a1a1a;
+  background: var(--bg-dark);
   color: white;
   min-height: 100vh;
   display: flex;
@@ -14,17 +14,26 @@ body {
 }
 
 button {
-  width: 120px;
-  height: 60px;
-  margin: 10px;
-  font-size: 20px;
+  width: 90px;
+  height: 44px;
+  margin: 8px;
+  font-size: 16px;
   border-radius: 10px;
   border: none;
   cursor: pointer;
-  background: #444;
+  background: var(--btn-bg);
   color: white;
 }
 
 button:active {
-  background: #666;
+  background: var(--btn-active);
+}
+
+@media (max-width: 768px) {
+  button {
+    width: 80px;
+    height: 40px;
+    font-size: 14px;
+    margin: 6px;
+  }
 }

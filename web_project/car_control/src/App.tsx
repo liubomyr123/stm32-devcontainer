@@ -2,51 +2,25 @@ import MyJoystick from './components/MyJoystick';
 import { useCarConnection } from './hooks/useCarConnection';
 import MyCamera from './components/MyCamera';
 import MyGyro from './components/MyGyro';
+import './App.css';
 
 function App() {
   useCarConnection();
 
   return (
-    <div
-      style={{
-        fontFamily: 'Arial',
-        textAlign: 'center',
-        background: '#1a1a1a',
-        color: 'white',
-        minHeight: '100vh',
-      }}
-    >
-      <h1
-        style={{
-          padding: '20px',
-        }}
-      >
-        Car Controls
-      </h1>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'stretch',
-          gap: '10px',
-          padding: '10px',
-        }}
-      >
-        <div style={{ flex: 3 }}>
+    <div className="app">
+      <h2 className="app__title">Car Controls</h2>
+
+      <div className="app__top-row">
+        <div className="app__camera-col">
           <MyCamera />
         </div>
-        <div style={{ flex: 1 }}>
+        <div className="app__gyro-col">
           <MyGyro />
         </div>
       </div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-around',
-          alignItems: 'center',
-          flex: 1,
-          padding: '10px',
-        }}
-      >
+
+      <div className="app__controls-row">
         <MyJoystick type="car_control" />
         <MyJoystick type="cam_control" />
       </div>

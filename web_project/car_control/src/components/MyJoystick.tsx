@@ -5,6 +5,24 @@ import moveSvg from '../assets/move.svg';
 import camSvg from '../assets/cam.svg';
 import type { JoystickType } from '../types';
 
+import '../styles/MyJoystick.css';
+
+const JOYSTICK_COLORS: {
+  [K in JoystickType]: {
+    front: string;
+    back: string;
+  };
+} = {
+  car_control: {
+    front: `url("${moveSvg}") center/60% no-repeat, linear-gradient(135deg, #38bdf8, #0ea5e9)`,
+    back: 'rgba(99, 102, 241, 0.12)',
+  },
+  cam_control: {
+    front: `url("${camSvg}") center/60% no-repeat, linear-gradient(135deg, #34d399, #10b981)`,
+    back: 'rgba(16, 185, 129, 0.15)',
+  },
+};
+
 function MyJoystick(props: { type: JoystickType }) {
   const joystickZoneRef = useRef<HTMLDivElement>(null);
   const isCameraJoystick = props.type == 'cam_control';
@@ -18,15 +36,7 @@ function MyJoystick(props: { type: JoystickType }) {
       position: { left: '50%', top: '50%' },
       lockX: isCameraJoystick ? true : false,
       // restJoystick: false,
-      color: isCameraJoystick
-        ? {
-            front: `url("${camSvg}") center/60% no-repeat, linear-gradient(135deg, #34d399, #10b981)`,
-            back: 'rgba(16, 185, 129, 0.15)',
-          }
-        : {
-            front: `url("${moveSvg}") center/60% no-repeat, linear-gradient(135deg, #38bdf8, #0ea5e9)`,
-            back: 'rgba(99, 102, 241, 0.12)',
-          },
+      color: JOYSTICK_COLORS[props.type],
     });
 
     manager.on('move', (evt) => {
@@ -83,15 +93,7 @@ function MyJoystick(props: { type: JoystickType }) {
     <div
       id={props.type}
       ref={joystickZoneRef}
-      style={{
-        width: '40vw',
-        height: '40vw',
-        maxWidth: '200px',
-        maxHeight: '200px',
-        position: 'relative',
-        overflow: 'hidden',
-        touchAction: 'none',
-      }}
+      className="joystick-zone"
     />
   );
 }

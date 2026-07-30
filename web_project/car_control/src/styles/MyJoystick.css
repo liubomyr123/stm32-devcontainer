@@ -1,0 +1,18 @@
+.joystick-zone {
+  width: 40vw;
+  height: 40vw;
+  max-width: 200px;
+  max-height: 200px;
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+}
+
+@media (max-width: 768px) {
+  .joystick-zone {
+    width: 35vw;
+    height: 35vw;
+    max-width: 150px;
+    max-height: 150px;
+  }
+}
