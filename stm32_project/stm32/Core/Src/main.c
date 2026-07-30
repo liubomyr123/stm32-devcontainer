@@ -55,20 +55,20 @@ DMA_HandleTypeDef hdma_usart3_rx;
 osThreadId_t StateMachineHandle;
 const osThreadAttr_t StateMachine_attributes = {
   .name = "StateMachine",
-  .stack_size = 256 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
 osThreadId_t UartTaskHandle;
 const osThreadAttr_t UartTask_attr = {
   .name = "UARTTask",
-  .stack_size = 256 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 osThreadId_t GyroTaskHandle;
 const osThreadAttr_t GyroTask_attr = {
   .name = "GyroTask",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 // #define UART_RX_BUF_SIZE 64
@@ -174,7 +174,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   uartRawQueueHandle = osMessageQueueNew(10, sizeof(uint16_t), NULL);
-  uartCmdQueueHandle = osMessageQueueNew(10, sizeof(UartCmd), NULL);
+  uartCmdQueueHandle = osMessageQueueNew(32, sizeof(UartCmd), NULL);
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */

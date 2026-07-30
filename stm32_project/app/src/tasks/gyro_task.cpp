@@ -13,8 +13,9 @@ extern UART_HandleTypeDef huart3;
 extern "C" void GyroTask(void* argument)
 {
     (void)argument;
-
     LOG_INFO("GYRO", "Task started");
+
+    vTaskDelay(pdMS_TO_TICKS(500));
 
     MPU6050 mpu{&hi2c1};
 

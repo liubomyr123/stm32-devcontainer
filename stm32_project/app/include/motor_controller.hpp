@@ -19,7 +19,7 @@ class MotorController
    public:
     static MotorController& instance();
     void setMotor(Motor motor, UartCmdType direction, uint8_t speed);
-    void apply(UartCmdType direction, int8_t throttle, int8_t steering);
+    void apply(UartCmd cmd_);
     void stop();
 
    private:

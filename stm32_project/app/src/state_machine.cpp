@@ -22,16 +22,14 @@ void StateMachine::updateState(const State newState)
     currentState_ = newState;
 }
 
-const DriveParams& StateMachine::getDriveParams() const
+const UartCmd& StateMachine::getDriveParams() const
 {
     return driveParams_;
 }
 
-void StateMachine::setDriveParams(UartCmdType direction, int8_t throttle, int8_t steering)
+void StateMachine::setDriveParams(UartCmd cmd_)
 {
-    driveParams_.direction = direction;
-    driveParams_.throttle = throttle;
-    driveParams_.steering = steering;
+    driveParams_ = cmd_;
 }
 
 const char* StateMachine::stateToString(State state)

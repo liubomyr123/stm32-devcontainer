@@ -1,5 +1,7 @@
 #include "include/motor_controller.hpp"
 
+#include "uart_config.h"
+
 extern TIM_HandleTypeDef htim3;
 
 MotorController& MotorController::instance()
@@ -58,25 +60,24 @@ void MotorController::setMotor(Motor motor, UartCmdType direction, uint8_t speed
     __HAL_TIM_SET_COMPARE(&htim3, cfg.channel, (uint32_t)speed);
 }
 
-void MotorController::apply(UartCmdType direction, int8_t throttle, int8_t steering)
+void MotorController::apply(UartCmd cmd_)
 {
-    (void)steering;
-    switch (direction)
+    switch (cmd_.type)
     {
         case UartCmdType::CMD_FORWARD:
         {
-            setMotor(Motor::FL, CMD_FORWARD, throttle);
-            setMotor(Motor::RL, CMD_FORWARD, throttle);
-            setMotor(Motor::FR, CMD_FORWARD, throttle);
-            setMotor(Motor::RR, CMD_FORWARD, throttle);
+            setMotor(Motor::FL, CMD_FORWARD, cmd_.f);
+            setMotor(Motor::RL, CMD_FORWARD, cmd_.f);
+            setMotor(Motor::FR, CMD_FORWARD, cmd_.f);
+            setMotor(Motor::RR, CMD_FORWARD, cmd_.f);
             break;
         }
         case UartCmdType::CMD_BACKWARD:
         {
-            setMotor(Motor::FL, CMD_BACKWARD, throttle);
-            setMotor(Motor::RL, CMD_BACKWARD, throttle);
-            setMotor(Motor::FR, CMD_BACKWARD, throttle);
-            setMotor(Motor::RR, CMD_BACKWARD, throttle);
+            setMotor(Motor::FL, CMD_BACKWARD, cmd_.b);
+            setMotor(Motor::RL, CMD_BACKWARD, cmd_.b);
+            setMotor(Motor::FR, CMD_BACKWARD, cmd_.b);
+            setMotor(Motor::RR, CMD_BACKWARD, cmd_.b);
             break;
         }
         // case UartCmdType::CMD_LEFT:
@@ -108,5 +109,7 @@ void MotorController::apply(UartCmdType direction, int8_t throttle, int8_t steer
 
 void MotorController::stop()
 {
-    apply(UartCmdType::CMD_STOP, 0, 0);
+    UartCmd stop_cmd{};
+    stop_cmd.type = CMD_STOP;
+    apply(stop_cmd);
 }

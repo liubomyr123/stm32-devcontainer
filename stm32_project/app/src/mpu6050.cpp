@@ -7,7 +7,9 @@ bool MPU6050::init() const
 
     // check device ID WHO_AM_I
 
-    HAL_I2C_Mem_Read(hi2c1, MPU6050_ADDR, WHO_AM_I_REG, 1, &check, 1, i2c_timeout);
+    HAL_StatusTypeDef status =
+        HAL_I2C_Mem_Read(hi2c1, MPU6050_ADDR, WHO_AM_I_REG, 1, &check, 1, i2c_timeout);
+    LOG_INFO("GYRO", "WHO_AM_I status=%d check=0x%02X", status, check);
 
     if (check == 104)  // 0x68 will be returned by the sensor if everything goes well
     {

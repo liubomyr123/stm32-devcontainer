@@ -7,7 +7,11 @@
 typedef enum
 {
     CMD_FORWARD,
+    CMD_FORWARD_LEFT,
+    CMD_FORWARD_RIGHT,
     CMD_BACKWARD,
+    CMD_BACKWARD_LEFT,
+    CMD_BACKWARD_RIGHT,
     CMD_LEFT,
     CMD_RIGHT,
     CMD_STOP,
@@ -17,7 +21,10 @@ typedef enum
 typedef struct
 {
     UartCmdType type;
-    int8_t value;  // 0-100
+    int8_t f;  // 0-100
+    int8_t b;  // 0-100
+    int8_t r;  // 0-100
+    int8_t l;  // 0-100
 } UartCmd;
 
 const char* cmdTypeToString(UartCmdType type);

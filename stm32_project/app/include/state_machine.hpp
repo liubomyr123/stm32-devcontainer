@@ -11,13 +11,6 @@ enum class State
     DRIVING
 };
 
-struct DriveParams
-{
-    UartCmdType direction = CMD_STOP;
-    int8_t throttle = 0;  // -100..+100
-    int8_t steering = 0;  // -100..+100
-};
-
 class StateMachine
 {
    public:
@@ -25,15 +18,15 @@ class StateMachine
     State getState() const;
     void updateState(const State newState);
 
-    const DriveParams& getDriveParams() const;
-    void setDriveParams(UartCmdType direction, int8_t throttle, int8_t steering);
+    const UartCmd& getDriveParams() const;
+    void setDriveParams(UartCmd cmd_);
     static const char* stateToString(State state);
 
    private:
     static constexpr const char* TAG = "SM";
     StateMachine() = default;
     State currentState_ = State::IDLE;
-    DriveParams driveParams_;
+    UartCmd driveParams_{};
 };
 
 #endif

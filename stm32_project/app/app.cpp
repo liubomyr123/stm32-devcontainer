@@ -12,50 +12,40 @@ extern "C" void app_main()
 {
     LED led(GPIOG, GPIO_PIN_13);
     Button btn(GPIOA, GPIO_PIN_0);
-    UartCmd cmd;
+    UartCmd cmd{};
 
     LOG_INFO("APP", "Started!");
     while (true)
     {
         if (osMessageQueueGet(uartCmdQueueHandle, &cmd, nullptr, 0) == osOK)
         {
-            LOG_INFO("APP", "Data: cmd=%s speed=%d", cmdTypeToString(cmd.type), cmd.value);
+            LOG_INFO("APP", "Data: cmd=%s", cmdTypeToString(cmd.type));
 
             switch (StateMachine::instance().getState())
             {
                 case State::IDLE:
                 {
-                    if (cmd.type == CMD_FORWARD || cmd.type == CMD_BACKWARD)
+                    if (cmd.type == CMD_STOP || cmd.type == CMD_UNKNOWN)
                     {
-                        StateMachine::instance().setDriveParams(cmd.type, cmd.value, 0);
-                        StateMachine::instance().updateState(State::DRIVING);
+                        break;
                     }
-                    // else if (cmd.type == CMD_LEFT || cmd.type == CMD_RIGHT)
-                    // {
-                    //     // skip...
-                    // }
-                    // else if (cmd.type == CMD_STOP || cmd.type == CMD_UNKNOWN)
-                    // {
-                    //     // also skip...
-                    // }
+                    StateMachine::instance().setDriveParams(cmd);
+                    StateMachine::instance().updateState(State::DRIVING);
                     break;
                 }
 
                 case State::DRIVING:
                 {
-                    const DriveParams& p = StateMachine::instance().getDriveParams();
-                    if (cmd.type == CMD_FORWARD || cmd.type == CMD_BACKWARD)
+                    if (cmd.type == CMD_STOP || cmd.type == CMD_UNKNOWN)
                     {
-                        StateMachine::instance().setDriveParams(cmd.type, cmd.value, p.steering);
-                    }
-                    else if (cmd.type == CMD_LEFT || cmd.type == CMD_RIGHT)
-                    {
-                        StateMachine::instance().setDriveParams(cmd.type, p.throttle, cmd.value);
-                    }
-                    else if (cmd.type == CMD_STOP)
-                    {
-                        StateMachine::instance().setDriveParams(CMD_STOP, 0, 0);
+                        UartCmd stop_cmd{};
+                        stop_cmd.type = CMD_STOP;
+                        StateMachine::instance().setDriveParams(stop_cmd);
                         StateMachine::instance().updateState(State::IDLE);
+                    }
+                    else
+                    {
+                        StateMachine::instance().setDriveParams(cmd);
                     }
                     break;
                 }
@@ -66,23 +56,28 @@ extern "C" void app_main()
                 }
             }
 
-            const DriveParams& p = StateMachine::instance().getDriveParams();
-            LOG_INFO("APP", "State=%s dir=%s throttle=%d steering=%d",
+            const UartCmd& p = StateMachine::instance().getDriveParams();
+            LOG_INFO("APP", "State=%s dir=%s F=%d B=%d L=%d R=%d",
                      StateMachine::stateToString(StateMachine::instance().getState()),
-                     cmdTypeToString(p.direction), p.throttle, p.steering);
+                     cmdTypeToString(p.type), p.f, p.b, p.l, p.r);
         }
 
         switch (StateMachine::instance().getState())
         {
             case State::IDLE:
             {
+                const UartCmd& p = StateMachine::instance().getDriveParams();
+                if (p.type == CMD_STOP)
+                {
+                    break;
+                }
                 MotorController::instance().stop();
                 break;
             }
             case State::DRIVING:
             {
-                const DriveParams& p = StateMachine::instance().getDriveParams();
-                MotorController::instance().apply(p.direction, p.throttle, p.steering);
+                const UartCmd& p = StateMachine::instance().getDriveParams();
+                MotorController::instance().apply(p);
                 break;
             }
 
