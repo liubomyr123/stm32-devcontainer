@@ -132,23 +132,23 @@ bool UartManager::queue_received(uart_event_t& event)
     return xQueueReceive(uart_queue, &event, portMAX_DELAY);
 }
 
-bool UartManager::read_gyro(GyroPacket& pkt)
+bool UartManager::read_telemetry(TelemetryPacket& pkt)
 {
-    int read_len = uart_read_bytes(UART_PORT,           //
-                                   (uint8_t*)&pkt,      //
-                                   sizeof(GyroPacket),  //
+    int read_len = uart_read_bytes(UART_PORT,                //
+                                   (uint8_t*)&pkt,           //
+                                   sizeof(TelemetryPacket),  //
                                    pdMS_TO_TICKS(10));
     if (read_len == 0)
     {
-        ESP_LOGW(TAG, "read_gyro: timeout or empty buffer");
+        ESP_LOGW(TAG, "read_telemetry: timeout or empty buffer");
         return false;
     }
     if (read_len < 0)
     {
-        ESP_LOGE(TAG, "read_gyro: error %d", read_len);
+        ESP_LOGE(TAG, "read_telemetry: error %d", read_len);
         return false;
     }
-    if (read_len != sizeof(GyroPacket))
+    if (read_len != sizeof(TelemetryPacket))
     {
         return false;
     }

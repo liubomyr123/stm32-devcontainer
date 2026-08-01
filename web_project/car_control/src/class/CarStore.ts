@@ -1,4 +1,9 @@
-import type { CamControls, CarControls, GyroControls } from '../types';
+import type {
+  CamControls,
+  CarControls,
+  GyroControls,
+  MotorControls,
+} from '../types';
 
 class CarStore {
   private static instance: CarStore;
@@ -18,6 +23,13 @@ class CarStore {
   private gyroControls: GyroControls = {
     pitch: 0,
     roll: 0,
+  };
+
+  private motorControls: MotorControls = {
+    fl: 0,
+    fr: 0,
+    rl: 0,
+    rr: 0,
   };
 
   private listeners: Set<() => void> = new Set();
@@ -44,6 +56,15 @@ class CarStore {
   updateGyroControls(gyroControls: Partial<GyroControls>) {
     this.gyroControls = { ...this.gyroControls, ...gyroControls };
     this.notify();
+  }
+
+  updateMotorControls(motorControls: Partial<MotorControls>) {
+    this.motorControls = { ...this.motorControls, ...motorControls };
+    this.notify();
+  }
+
+  getMotorControls(): MotorControls {
+    return this.motorControls;
   }
 
   getCarControls(): CarControls {

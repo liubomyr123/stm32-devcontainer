@@ -8,7 +8,6 @@
 .gyro-panel__block {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 8px;
 }
 
@@ -44,4 +43,68 @@
   .gyro-panel {
     gap: 16px;
   }
+}
+
+.wheel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.wheel__label {
+  font-size: 10px;
+  color: #888;
+}
+
+.gyro-panel__row {
+  display: flex;
+  gap: 10px;
+}
+
+.gyro-panel__wheels-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.wheel__bar {
+  width: 48px;
+  height: 80px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  font-size: 11px;
+  font-weight: 700;
+  justify-content: space-between;
+  padding: 10px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  border: 3px solid #1a1a1a;
+  background-color: var(--wheel-color);
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.35) 0px,
+    rgba(0, 0, 0, 0.35) 4px,
+    transparent 4px,
+    transparent 10px
+  );
+  transition: background-color 0.15s ease;
+  gap: 5px;
+}
+
+.wheel__arrow {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+}
+
+.wheel__arrow--up {
+  border-bottom: 7px solid #fff;
+}
+
+.wheel__arrow--down {
+  border-top: 7px solid #fff;
 }

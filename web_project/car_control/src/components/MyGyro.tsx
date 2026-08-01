@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useGyroControls } from '../hooks/useGyroControls';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useMotorControls } from '../hooks/useMotorControls';
+import '../styles/MyGyro.css';
 
 const BASE_RADIUS = 135; // еталонний радіус, під який підібрані всі пропорції
 
@@ -219,21 +221,89 @@ function AttitudeIndicator({
   );
 }
 
+function lerp(a: number, b: number, t: number) {
+  return Math.round(a + (b - a) * t);
+}
+
+function lerpColor(
+  from: [number, number, number],
+  to: [number, number, number],
+  t: number
+) {
+  return `rgb(${lerp(from[0], to[0], t)}, ${lerp(from[1], to[1], t)}, ${lerp(from[2], to[2], t)})`;
+}
+
+const GRAY: [number, number, number] = [85, 85, 85]; // #555
+const GREEN: [number, number, number] = [76, 175, 80]; // #4caf50
+const RED: [number, number, number] = [229, 57, 53]; // #e53935
+
+function getWheelColor(value: number) {
+  const t = Math.min(Math.abs(value), 100) / 100; // 0..1
+  if (value > 0) return lerpColor(GRAY, GREEN, t);
+  if (value < 0) return lerpColor(GRAY, RED, t);
+  return `rgb(${GRAY[0]}, ${GRAY[1]}, ${GRAY[2]})`;
+}
+
+function Wheel({ label, value }: { label: string; value: number }) {
+  const color = getWheelColor(value);
+  return (
+    <div className="wheel">
+      <div
+        className="wheel__bar"
+        style={{ '--wheel-color': color } as React.CSSProperties}
+      >
+        {value > 0 && <span className="wheel__arrow wheel__arrow--up" />}
+        {(value < 0 || value == 0) && (
+          <span style={{ borderTop: '7px solid #fff' }} />
+        )}
+        {Math.abs(value)}%
+        {value < 0 && <span className="wheel__arrow wheel__arrow--down" />}
+        {(value > 0 || value == 0) && (
+          <span style={{ borderTop: '7px solid #fff' }} />
+        )}
+      </div>
+      <span className="wheel__label">{label}</span>
+    </div>
+  );
+}
+
 function MyGyro() {
   const gyro = useGyroControls();
+  const motors = useMotorControls();
   const isMobile = useIsMobile();
 
   return (
     <div className="gyro-panel">
       <div className="gyro-panel__block">
-        <AttitudeIndicator
-          pitch={gyro.pitch}
-          roll={gyro.roll}
-          size={isMobile ? 220 : 270}
-        />
+        <div className="gyro-panel__row">
+          <div className="gyro-panel__wheels-col">
+            <Wheel
+              label="FL"
+              value={motors.fl}
+            />
+            <Wheel
+              label="RL"
+              value={motors.rl}
+            />
+          </div>
+          <AttitudeIndicator
+            pitch={gyro.pitch}
+            roll={gyro.roll}
+            size={isMobile ? 220 : 270}
+          />
+          <div className="gyro-panel__wheels-col">
+            <Wheel
+              label="FR"
+              value={motors.fr}
+            />
+            <Wheel
+              label="RR"
+              value={motors.rr}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
 export default MyGyro;

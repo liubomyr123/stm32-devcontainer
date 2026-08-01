@@ -2,9 +2,10 @@
 #include <cmath>
 
 #include "cmsis_os.h"
-#include "gyro_packet.h"
 #include "include/logger.hpp"
 #include "include/mpu6050.hpp"
+#include "motor_controller.hpp"
+#include "telemetry_packet.h"
 #include "uart_manager.hpp"
 
 extern I2C_HandleTypeDef hi2c1;
@@ -33,9 +34,13 @@ extern "C" void GyroTask(void* argument)
         }
         LOG_INFO("GYRO", "Pitch=%.1f Roll=%.1f", mpu.getPitch(), mpu.getRoll());
 
-        GyroPacket pkt;
+        TelemetryPacket pkt;
         pkt.pitch = static_cast<float>(mpu.getPitch());
         pkt.roll = static_cast<float>(mpu.getRoll());
+        pkt.fl = MotorController::instance().getFL();
+        pkt.fr = MotorController::instance().getFR();
+        pkt.rl = MotorController::instance().getRL();
+        pkt.rr = MotorController::instance().getRR();
 
         UartManager::instance().send((uint8_t*)&pkt, sizeof(pkt));
 

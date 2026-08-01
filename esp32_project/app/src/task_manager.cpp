@@ -57,13 +57,14 @@ void TaskManager::uart_task(void* arg)
                 }
                 case UART_DATA:
                 {
-                    GyroPacket pkt;
-                    // ctx.uart_manager.read_gyro(pkt);
-                    if (ctx.uart_manager.read_gyro(pkt))
+                    TelemetryPacket pkt{};
+                    if (ctx.uart_manager.read_telemetry(pkt))
                     {
-                        char json[64];
-                        snprintf(json, sizeof(json), "{\"pitch\":%.1f,\"roll\":%.1f}", pkt.pitch,
-                                 pkt.roll);
+                        char json[128];
+                        snprintf(json, sizeof(json),
+                                 "{\"pitch\":%.1f,\"roll\":%.1f,\"fl\":%d,\"fr\":%d,\"rl\":%d,"
+                                 "\"rr\":%d}",
+                                 pkt.pitch, pkt.roll, pkt.fl, pkt.fr, pkt.rl, pkt.rr);
                         ctx.server.send_web_socket(json);
                     }
                     break;

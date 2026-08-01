@@ -16,3 +16,10 @@ export interface CamControls {
   panX: number;
   panY: number;
 }
+
+export type MotorControls = {
+  fl: number;
+  fr: number;
+  rl: number;
+  rr: number;
+};

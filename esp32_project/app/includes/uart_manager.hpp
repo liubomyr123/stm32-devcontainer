@@ -13,11 +13,15 @@
 #define UART_BAUD 115200
 #define UART_BUF_SIZE 256
 
-struct GyroPacket
+typedef struct
 {
-    float pitch;
-    float roll;
-};
+    float pitch{};
+    float roll{};
+    int8_t fl{};  // Front Left speed (-100..+100, від'ємне = назад)
+    int8_t fr{};  // Front Right
+    int8_t rl{};  // Rear Left
+    int8_t rr{};  // Rear Right
+} TelemetryPacket;
 
 class UartManager
 {
@@ -35,5 +39,5 @@ class UartManager
     bool read_patern(uint8_t* buf, size_t len);
     bool read_data(uint8_t* buf, size_t len, size_t size);
     bool queue_received(uart_event_t& event);
-    bool read_gyro(GyroPacket& pkt);
+    bool read_telemetry(TelemetryPacket& pkt);
 };

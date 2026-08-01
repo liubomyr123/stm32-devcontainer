@@ -20,6 +20,19 @@ export function useCarConnection() {
             roll: telemetry.roll,
           });
         }
+        if (
+          typeof telemetry.fl === 'number' &&
+          typeof telemetry.fr === 'number' &&
+          typeof telemetry.rl === 'number' &&
+          typeof telemetry.rr === 'number'
+        ) {
+          carStore.updateMotorControls({
+            fl: telemetry.fl,
+            fr: telemetry.fr,
+            rl: telemetry.rl,
+            rr: telemetry.rr,
+          });
+        }
       } catch {
         console.warn('Invalid telemetry:', data);
       }
