@@ -1,5 +1,13 @@
 #include "state_machine.hpp"
 
+#include "uart_config.h"
+
+StateMachine::StateMachine()
+{
+    driveParams_.type = CMD_STOP;
+    previousDriveParams_.type = CMD_STOP;
+}
+
 StateMachine& StateMachine::instance()
 {
     static StateMachine instance;
@@ -9,6 +17,11 @@ StateMachine& StateMachine::instance()
 State StateMachine::getState() const
 {
     return currentState_;
+}
+
+State StateMachine::getPreviousState() const
+{
+    return previousState_;
 }
 
 void StateMachine::updateState(const State newState)
@@ -22,9 +35,20 @@ void StateMachine::updateState(const State newState)
     currentState_ = newState;
 }
 
+void StateMachine::updatePreviousState()
+{
+    previousState_ = currentState_;
+    previousDriveParams_ = driveParams_;
+}
+
 const UartCmd& StateMachine::getDriveParams() const
 {
     return driveParams_;
+}
+
+const UartCmd& StateMachine::getPreviousDriveParams() const
+{
+    return previousDriveParams_;
 }
 
 void StateMachine::setDriveParams(UartCmd cmd_)

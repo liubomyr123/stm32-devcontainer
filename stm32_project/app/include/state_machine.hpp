@@ -16,17 +16,22 @@ class StateMachine
    public:
     static StateMachine& instance();
     State getState() const;
+    State getPreviousState() const;
     void updateState(const State newState);
+    void updatePreviousState();
 
     const UartCmd& getDriveParams() const;
+    const UartCmd& getPreviousDriveParams() const;
     void setDriveParams(UartCmd cmd_);
     static const char* stateToString(State state);
 
    private:
     static constexpr const char* TAG = "SM";
-    StateMachine() = default;
+    StateMachine();
     State currentState_ = State::IDLE;
+    State previousState_ = State::IDLE;
     UartCmd driveParams_{};
+    UartCmd previousDriveParams_{};
 };
 
 #endif

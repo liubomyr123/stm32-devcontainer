@@ -12,6 +12,7 @@ class UartManager
     void send(const uint8_t* data, size_t len);
     void sendCmd(UartCmd cmd);
     bool receiveCmd(UartCmd& cmd, uint32_t timeout = osWaitForever);
+    UartCmd parseCmd(const char* buf);
 
    private:
     UartManager() = default;

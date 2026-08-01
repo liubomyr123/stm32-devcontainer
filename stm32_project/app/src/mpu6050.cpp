@@ -9,7 +9,7 @@ bool MPU6050::init() const
 
     HAL_StatusTypeDef status =
         HAL_I2C_Mem_Read(hi2c1, MPU6050_ADDR, WHO_AM_I_REG, 1, &check, 1, i2c_timeout);
-    LOG_INFO("GYRO", "WHO_AM_I status=%d check=0x%02X", status, check);
+    LOG_INFO("GYRO", "WHO_AM_I_REG status=%d check=0x%02X", status, check);
 
     if (check == 104)  // 0x68 will be returned by the sensor if everything goes well
     {
@@ -35,13 +35,19 @@ bool MPU6050::init() const
     return false;
 }
 
-void MPU6050::readAccel()
+bool MPU6050::readAccel()
 {
     std::array<uint8_t, 6> Rec_Data{};
 
     // Read 6 BYTES of data starting from ACCEL_XOUT_H register
 
-    HAL_I2C_Mem_Read(hi2c1, MPU6050_ADDR, ACCEL_XOUT_H_REG, 1, Rec_Data.data(), 6, i2c_timeout);
+    HAL_StatusTypeDef status =
+        HAL_I2C_Mem_Read(hi2c1, MPU6050_ADDR, ACCEL_XOUT_H_REG, 1, Rec_Data.data(), 6, i2c_timeout);
+    if (status != HAL_OK)
+    {
+        LOG_ERROR("GYRO", "ACCEL_XOUT_H_REG error: %d", status);
+        return false;
+    }
 
     data.Accel_X_RAW = (int16_t)(Rec_Data[0] << 8 | Rec_Data[1]);
     data.Accel_Y_RAW = (int16_t)(Rec_Data[2] << 8 | Rec_Data[3]);
@@ -56,16 +62,22 @@ void MPU6050::readAccel()
     data.Ax = data.Accel_X_RAW / 16384.0;
     data.Ay = data.Accel_Y_RAW / 16384.0;
     data.Az = data.Accel_Z_RAW / Accel_Z_corrector;
+    return true;
 }
 
-void MPU6050::readGyro()
+bool MPU6050::readGyro()
 {
     std::array<uint8_t, 6> Rec_Data{};
 
     // Read 6 BYTES of data starting from GYRO_XOUT_H register
 
-    HAL_I2C_Mem_Read(hi2c1, MPU6050_ADDR, GYRO_XOUT_H_REG,  //
-                     1, Rec_Data.data(), 6, i2c_timeout);
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Read(hi2c1, MPU6050_ADDR, GYRO_XOUT_H_REG,  //
+                                                1, Rec_Data.data(), 6, i2c_timeout);
+    if (status != HAL_OK)
+    {
+        LOG_ERROR("GYRO", "GYRO_XOUT_H_REG error: %d", status);
+        return false;
+    }
 
     data.Gyro_X_RAW = (int16_t)(Rec_Data[0] << 8 | Rec_Data[1]);
     data.Gyro_Y_RAW = (int16_t)(Rec_Data[2] << 8 | Rec_Data[3]);
@@ -80,31 +92,43 @@ void MPU6050::readGyro()
     data.Gx = data.Gyro_X_RAW / 131.0;
     data.Gy = data.Gyro_Y_RAW / 131.0;
     data.Gz = data.Gyro_Z_RAW / 131.0;
+    return true;
 }
 
-void MPU6050::readTemp()
+bool MPU6050::readTemp()
 {
     std::array<uint8_t, 2> Rec_Data{};
     int16_t temp;
 
     // Read 2 BYTES of data starting from TEMP_OUT_H_REG register
 
-    HAL_I2C_Mem_Read(hi2c1, MPU6050_ADDR, TEMP_OUT_H_REG,  //
-                     1, Rec_Data.data(), 2, i2c_timeout);
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Read(hi2c1, MPU6050_ADDR, TEMP_OUT_H_REG,  //
+                                                1, Rec_Data.data(), 2, i2c_timeout);
+    if (status != HAL_OK)
+    {
+        LOG_ERROR("GYRO", "TEMP_OUT_H_REG error: %d", status);
+        return false;
+    }
 
     temp = (int16_t)(Rec_Data[0] << 8 | Rec_Data[1]);
     data.Temperature = (float)((int16_t)temp / (float)340.0 + (float)36.53);
+    return true;
 }
 
-void MPU6050::readAll()
+bool MPU6050::readAll()
 {
     std::array<uint8_t, 14> Rec_Data{};
     int16_t temp;
 
     // Read 14 BYTES of data starting from ACCEL_XOUT_H register
 
-    HAL_I2C_Mem_Read(hi2c1, MPU6050_ADDR, ACCEL_XOUT_H_REG,  //
-                     1, Rec_Data.data(), 14, i2c_timeout);
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Read(hi2c1, MPU6050_ADDR, ACCEL_XOUT_H_REG,  //
+                                                1, Rec_Data.data(), 14, i2c_timeout);
+    if (status != HAL_OK)
+    {
+        LOG_ERROR("GYRO", "ACCEL_XOUT_H_REG error: %d", status);
+        return false;
+    }
 
     data.Accel_X_RAW = (int16_t)(Rec_Data[0] << 8 | Rec_Data[1]);
     data.Accel_Y_RAW = (int16_t)(Rec_Data[2] << 8 | Rec_Data[3]);
@@ -151,6 +175,7 @@ void MPU6050::readAll()
         data.Gx = -data.Gx;
     }
     data.KalmanAngleX = kalmanGetAngle(&KalmanX, roll, data.Gx, dt);
+    return true;
 }
 
 double MPU6050::kalmanGetAngle(Kalman_t *Kalman, double newAngle, double newRate, double dt)

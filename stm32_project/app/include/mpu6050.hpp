@@ -60,13 +60,10 @@ class MPU6050
    public:
     bool init() const;
 
-    void readAccel();
-
-    void readGyro();
-
-    void readTemp();
-
-    void readAll();
+    bool readAccel();
+    bool readGyro();
+    bool readTemp();
+    bool readAll();
 
     const double& getPitch() const
     {
@@ -93,7 +90,7 @@ class MPU6050
     };
 
    private:
-    static constexpr const char* TAG = "mpu6050";
+    static constexpr const char* TAG = "MPU6050";
 
     double kalmanGetAngle(Kalman_t* Kalman, double newAngle, double newRate, double dt);
 

@@ -12,14 +12,16 @@ extern "C" void app_main()
 {
     LED led(GPIOG, GPIO_PIN_13);
     Button btn(GPIOA, GPIO_PIN_0);
-    UartCmd cmd{};
 
     LOG_INFO("APP", "Started!");
     while (true)
     {
+        UartCmd cmd{};
         if (osMessageQueueGet(uartCmdQueueHandle, &cmd, nullptr, 0) == osOK)
         {
             LOG_INFO("APP", "Data: cmd=%s", cmdTypeToString(cmd.type));
+
+            StateMachine::instance().updatePreviousState();
 
             switch (StateMachine::instance().getState())
             {
@@ -66,18 +68,17 @@ extern "C" void app_main()
         {
             case State::IDLE:
             {
-                const UartCmd& p = StateMachine::instance().getDriveParams();
-                if (p.type == CMD_STOP)
+                if (StateMachine::instance().getPreviousState() == State::DRIVING)
                 {
-                    break;
+                    MotorController::instance().stop();
+                    StateMachine::instance().updatePreviousState();
                 }
-                MotorController::instance().stop();
                 break;
             }
             case State::DRIVING:
             {
-                const UartCmd& p = StateMachine::instance().getDriveParams();
-                MotorController::instance().apply(p);
+                const UartCmd& driveParams = StateMachine::instance().getDriveParams();
+                MotorController::instance().apply(driveParams);
                 break;
             }
 

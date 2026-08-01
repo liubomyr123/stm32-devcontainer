@@ -26,7 +26,11 @@ extern "C" void GyroTask(void* argument)
 
     while (true)
     {
-        mpu.readAll();
+        if (!mpu.readAll())
+        {
+            vTaskDelay(pdMS_TO_TICKS(50));
+            continue;
+        }
         LOG_INFO("GYRO", "Pitch=%.1f Roll=%.1f", mpu.getPitch(), mpu.getRoll());
 
         GyroPacket pkt;
@@ -35,6 +39,6 @@ extern "C" void GyroTask(void* argument)
 
         UartManager::instance().send((uint8_t*)&pkt, sizeof(pkt));
 
-        vTaskDelay(pdMS_TO_TICKS(50));  // 50 Hz
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
