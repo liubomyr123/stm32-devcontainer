@@ -21,6 +21,33 @@ struct MotorConfig
     uint32_t channel;
 };
 
+bool MotorController::init()
+{
+    if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK)
+    {
+        return false;
+    }
+    if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2) != HAL_OK)
+    {
+        return false;
+    }
+    if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3) != HAL_OK)
+    {
+        return false;
+    }
+    if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4) != HAL_OK)
+    {
+        return false;
+    }
+
+    // STBY1 — драйвер FL/FR
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+    // STBY2 — драйвер RL/RR
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_SET);
+
+    return true;
+}
+
 void MotorController::setMotor(Motor motor, UartCmdType direction, uint8_t speed)
 {
     static const std::array<MotorConfig, 4> motorConfigs = {{

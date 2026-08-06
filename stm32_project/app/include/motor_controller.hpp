@@ -19,7 +19,8 @@ class MotorController
 {
    public:
     static MotorController& instance();
-    void setMotor(Motor motor, UartCmdType direction, uint8_t speed);
+
+    bool init();
     void apply(UartCmd cmd_);
     void stop();
 
@@ -43,6 +44,7 @@ class MotorController
    private:
     static constexpr const char* TAG = "MOTOR_CONTROLLER";
     MotorController() = default;
+    void setMotor(Motor motor, UartCmdType direction, uint8_t speed);
     void setLeft(int16_t speed);
     void setRight(int16_t speed);
 

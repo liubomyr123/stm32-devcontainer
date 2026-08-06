@@ -147,17 +147,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
   LOG_INFO("TAG", "Hello!");
   
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
-  // HAL_TIM_PWM_Start(&htim11, TIM_CHANNEL_1);
-
-  // STBY1
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-  // STBY2
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, GPIO_PIN_SET);
-
   // Запускаємо DMA прийом на USART3
   HAL_UART_Receive_DMA(&huart3, uart3_rx_buf, UART_RX_BUF_SIZE);
 

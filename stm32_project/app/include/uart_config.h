@@ -21,10 +21,12 @@ typedef enum
 typedef struct
 {
     UartCmdType type;
-    int8_t f;  // 0-100
-    int8_t b;  // 0-100
-    int8_t r;  // 0-100
-    int8_t l;  // 0-100
+    int8_t f;   // [0; 100]
+    int8_t b;   // [0; 100]
+    int8_t r;   // [0; 100]
+    int8_t l;   // [0; 100]
+    int8_t px;  // [-100; 100]
+    int8_t py;  // [-100; 100]
 } UartCmd;
 
 const char* cmdTypeToString(UartCmdType type);

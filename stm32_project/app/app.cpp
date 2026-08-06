@@ -4,6 +4,7 @@
 #include "include/logger.hpp"
 #include "include/motor_controller.hpp"
 #include "include/state_machine.hpp"
+#include "servo_sg90.hpp"
 #include "uart_config.h"
 
 extern osMessageQueueId_t uartCmdQueueHandle;
@@ -13,13 +14,26 @@ extern "C" void app_main()
     LED led(GPIOG, GPIO_PIN_13);
     Button btn(GPIOA, GPIO_PIN_0);
 
+    if (!MotorController::instance().init())
+    {
+        LOG_ERROR("APP", "MotorController init failed");
+    }
+
+    if (!ServoSG90::instance().init())
+    {
+        LOG_ERROR("APP", "ServoSG90 init failed");
+    }
+
     LOG_INFO("APP", "Started!");
+
     while (true)
     {
         UartCmd cmd{};
         if (osMessageQueueGet(uartCmdQueueHandle, &cmd, nullptr, 0) == osOK)
         {
             LOG_INFO("APP", "Data: cmd=%s", cmdTypeToString(cmd.type));
+
+            ServoSG90::instance().setTargetAngle(cmd.py);
 
             StateMachine::instance().updatePreviousState();
 

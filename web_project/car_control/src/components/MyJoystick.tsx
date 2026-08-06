@@ -35,7 +35,7 @@ function MyJoystick(props: { type: JoystickType }) {
       mode: 'static',
       position: { left: '50%', top: '50%' },
       lockX: isCameraJoystick ? true : false,
-      // restJoystick: false,
+      restJoystick: isCameraJoystick ? false : true,
       color: JOYSTICK_COLORS[props.type],
     });
 

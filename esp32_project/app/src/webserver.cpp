@@ -208,8 +208,10 @@ esp_err_t Webserver::ws_handler(httpd_req_t* req)
                      l->valueint, px->valueint, py->valueint);
 
             char cmd[64];
-            snprintf(cmd, sizeof(cmd), "F:%d B:%d R:%d L:%d", f->valueint, b->valueint, r->valueint,
-                     l->valueint);
+            snprintf(cmd, sizeof(cmd), "F:%d B:%d R:%d L:%d PX:%d PY:%d",  //
+                     f->valueint, b->valueint, r->valueint,                //
+                     l->valueint, px->valueint, py->valueint);
+
             ctx.uart_manager.send(cmd);
             ctx.memory_manager.log(cmd);
         }

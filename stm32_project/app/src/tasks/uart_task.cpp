@@ -25,6 +25,9 @@ extern "C" void UartTask(void* argument)
             if (len > 0)
             {
                 uart3_rx_buf[len] = '\0';
+
+                // LOG_INFO("UART", "Raw buffer (%u bytes): '%s'", len, (const char*)uart3_rx_buf);
+
                 UartCmd cmd = UartManager::instance().parseCmd((const char*)uart3_rx_buf);
 
                 if (cmd.type == CMD_UNKNOWN)
@@ -33,8 +36,9 @@ extern "C" void UartTask(void* argument)
                 }
                 else
                 {
-                    LOG_INFO("UART", "Received: %s / cmd=%s F=%d, B=%d, L=%d, R=%d", uart3_rx_buf,
-                             cmdTypeToString(cmd.type), cmd.f, cmd.b, cmd.l, cmd.r);
+                    LOG_INFO("UART", "Received: %s / cmd=%s F=%d, B=%d, L=%d, R=%d, PX=%d, PY=%d",
+                             uart3_rx_buf, cmdTypeToString(cmd.type), cmd.f, cmd.b, cmd.l, cmd.r,
+                             cmd.px, cmd.py);
 
                     osMessageQueuePut(uartCmdQueueHandle, &cmd, 0, 0);
                 }

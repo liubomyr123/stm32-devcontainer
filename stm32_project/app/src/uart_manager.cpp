@@ -43,12 +43,22 @@ UartCmd UartManager::parseCmd(const char* buf)
     int b = 0;
     int r = 0;
     int l = 0;
-    if (std::sscanf(buf, "F:%d B:%d R:%d L:%d", &f, &b, &r, &l) == 4)
+    int px = 0;
+    int py = 0;
+
+    int parsed = std::sscanf(buf, "F:%d B:%d R:%d L:%d PX:%d PY:%d", &f, &b, &r, &l, &px, &py);
+    if (parsed >= 4)
     {
         cmd.f = static_cast<int8_t>(f);
         cmd.b = static_cast<int8_t>(b);
         cmd.r = static_cast<int8_t>(r);
         cmd.l = static_cast<int8_t>(l);
+
+        if (parsed == 6)
+        {
+            cmd.px = static_cast<int8_t>(px);
+            cmd.py = static_cast<int8_t>(py);
+        }
 
         if (f == 0 && b == 0 && r == 0 && l == 0)
         {
