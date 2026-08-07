@@ -14,7 +14,7 @@ body {
 }
 
 button {
-  width: 90px;
+  min-width: 90px;
   height: 44px;
   margin: 8px;
   font-size: 16px;
@@ -31,7 +31,7 @@ button:active {
 
 @media (max-width: 768px) {
   button {
-    width: 80px;
+    min-width: 80px;
     height: 40px;
     font-size: 14px;
     margin: 6px;
