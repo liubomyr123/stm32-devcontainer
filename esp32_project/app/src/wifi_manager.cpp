@@ -283,3 +283,59 @@ bool WifiManager::testStaConnection(const char* ssid, const char* password, esp_
 
     return true;
 }
+
+bool WifiManager::saveStaCredentials(const char* ssid, const char* password)
+{
+    if (strlen(ssid) >= SSID_MAX_LEN)
+    {
+        ESP_LOGE(TAG, "SSID too long: %d chars (max %d)", strlen(ssid), SSID_MAX_LEN - 1);
+        return false;
+    }
+
+    if (strlen(password) >= PASSWORD_MAX_LEN)
+    {
+        ESP_LOGE(TAG, "Password too long: %d chars (max %d)", strlen(password),
+                 PASSWORD_MAX_LEN - 1);
+        return false;
+    }
+
+    auto& ctx = AppContext::get();
+
+    if (!ctx.memory_manager.nvsSetStr("sta_ssid", ssid))
+    {
+        ESP_LOGE(TAG, "Failed to save SSID to NVS");
+        return false;
+    }
+
+    if (!ctx.memory_manager.nvsSetStr("sta_pass", password))
+    {
+        ESP_LOGE(TAG, "Failed to save password to NVS");
+        return false;
+    }
+
+    ESP_LOGI(TAG, "STA credentials saved to NVS - ssid: %s / password: %s", ssid, password);
+    return true;
+}
+
+bool WifiManager::loadStaCredentials(char* ssid_out, size_t ssid_len, char* password_out,
+                                     size_t password_len)
+{
+    if (ssid_len < SSID_MAX_LEN || password_len < PASSWORD_MAX_LEN)
+    {
+        ESP_LOGE(TAG, "Buffer too small for STA credentials");
+        return false;
+    }
+
+    auto& ctx = AppContext::get();
+
+    bool has_ssid = ctx.memory_manager.nvsGetStr("sta_ssid", ssid_out, ssid_len);
+    bool has_pass = ctx.memory_manager.nvsGetStr("sta_pass", password_out, password_len);
+
+    if (!has_ssid || !has_pass)
+    {
+        ESP_LOGI(TAG, "No saved STA credentials found");
+        return false;
+    }
+
+    return true;
+}

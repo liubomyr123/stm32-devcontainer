@@ -32,11 +32,6 @@ extern "C" void app_main()
         return;
     }
 
-    esp_err_t test_error;
-    bool test_connected = false;
-    ctx.wifi_manager.testStaConnection("Iphone vovk_", "vovk_123", test_error, test_connected);
-    ESP_LOGI("TEST", "STA test result: %s", test_connected ? "CONNECTED" : "FAILED");
-
     esp_err_t webserver_error;
     if (!ctx.server.start_webserver(webserver_error))
     {

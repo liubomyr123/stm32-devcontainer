@@ -14,8 +14,19 @@ Webserver::~Webserver()
 
 esp_err_t Webserver::root_handler(httpd_req_t* req)
 {
-    httpd_resp_set_type(req, "text/html");
-    httpd_resp_set_hdr(req, "Content-Encoding", "identity");
+    esp_err_t error;
+    error = httpd_resp_set_type(req, "text/html");
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_set_type: %s", esp_err_to_name(error));
+        return ESP_FAIL;
+    }
+    error = httpd_resp_set_hdr(req, "Content-Encoding", "identity");
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_set_hdr: %s", esp_err_to_name(error));
+        return ESP_FAIL;
+    }
 
     auto& ctx = AppContext::get();
 
@@ -26,8 +37,6 @@ esp_err_t Webserver::root_handler(httpd_req_t* req)
     socklen_t addr_len = sizeof(addr);
     getpeername(sock, (struct sockaddr*)&addr, &addr_len);
     ESP_LOGI(TAG, "Client: %s", inet_ntoa(addr.sin_addr));
-
-    esp_err_t error;
 
     error = httpd_resp_set_type(req, "text/html");
     if (error != ESP_OK)
@@ -120,6 +129,163 @@ esp_err_t Webserver::stream_stop_handler(httpd_req_t* req)
     }
 
     return ESP_OK;
+}
+
+esp_err_t Webserver::wifi_credentials_get_handler(httpd_req_t* req)
+{
+    esp_err_t error;
+    auto& ctx = AppContext::get();
+
+    char ssid[WifiManager::SSID_MAX_LEN] = {};
+    char password[WifiManager::PASSWORD_MAX_LEN] = {};
+
+    bool has_saved =
+        ctx.wifi_manager.loadStaCredentials(ssid, sizeof(ssid), password, sizeof(password));
+
+    const size_t ssid_len = strlen(ssid);
+    const size_t password_len = strlen(password);
+    if (ssid_len > 0)
+    {
+        ESP_LOGI(TAG, "SSID (len: %d) was found in NVS", ssid_len);
+    }
+    if (password_len > 0)
+    {
+        ESP_LOGI(TAG, "Password (len: %d) was found in NVS", password_len);
+    }
+
+    cJSON* credentials_json = cJSON_CreateObject();
+    cJSON_AddBoolToObject(credentials_json, "has_saved", has_saved);
+    cJSON_AddStringToObject(credentials_json, "ssid", has_saved ? ssid : "");
+    cJSON_AddStringToObject(credentials_json, "password", has_saved ? password : "");
+
+    char* response = cJSON_PrintUnformatted(credentials_json);
+    error = httpd_resp_set_type(req, "application/json");
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_set_type: %s", esp_err_to_name(error));
+        cJSON_free(response);
+        cJSON_Delete(credentials_json);
+        return ESP_FAIL;
+    }
+    error = httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_send: %s", esp_err_to_name(error));
+        cJSON_free(response);
+        cJSON_Delete(credentials_json);
+        return ESP_FAIL;
+    }
+    cJSON_free(response);
+    cJSON_Delete(credentials_json);
+    return ESP_OK;
+}
+
+esp_err_t Webserver::wifi_credentials_post_handler(httpd_req_t* req)
+{
+    esp_err_t error;
+    auto& ctx = AppContext::get();
+
+    char body[256] = {};
+    if (!read_json_body(req, body, sizeof(body), error))
+    {
+        switch (error)
+        {
+            case ESP_ERR_INVALID_SIZE:
+                httpd_resp_send_err(req, HTTPD_413_CONTENT_TOO_LARGE, "Body too large");
+                break;
+            case ESP_ERR_TIMEOUT:
+                httpd_resp_send_408(req);
+                break;
+            case ESP_ERR_INVALID_ARG:
+                httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid request");
+                break;
+            default:
+                httpd_resp_send_500(req);
+                break;
+        }
+        return ESP_FAIL;
+    }
+
+    cJSON* json = cJSON_Parse(body);
+    if (json == nullptr)
+    {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    cJSON* ssid = cJSON_GetObjectItem(json, "ssid");
+    cJSON* password = cJSON_GetObjectItem(json, "password");
+
+    if (!ssid || !password)
+    {
+        ESP_LOGE(TAG, "Missing ssid or password field in JSON");
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing ssid or password field");
+        return ESP_FAIL;
+    }
+
+    if (!cJSON_IsString(ssid) || !cJSON_IsString(password))
+    {
+        ESP_LOGE(TAG, "ssid or password field is not a string");
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "ssid and password must be strings");
+        return ESP_FAIL;
+    }
+
+    bool saved = ctx.wifi_manager.saveStaCredentials(ssid->valuestring, password->valuestring);
+    cJSON_Delete(json);
+
+    if (!saved)
+    {
+        ESP_LOGE(TAG, "Failed to save credentials to NVS");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    error = httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_send: %s", esp_err_to_name(error));
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+bool Webserver::read_json_body(httpd_req_t* req, char* buf, size_t buf_len, esp_err_t& error)
+{
+    if (req->content_len >= buf_len)
+    {
+        ESP_LOGE(TAG, "Request body too large: %d bytes (max %d)", req->content_len, buf_len - 1);
+        error = ESP_ERR_INVALID_SIZE;
+        return false;
+    }
+
+    int received = httpd_req_recv(req, buf, req->content_len);
+    if (received <= 0)
+    {
+        ESP_LOGE(TAG, "httpd_req_recv failed: %d", received);
+        switch (received)
+        {
+            case HTTPD_SOCK_ERR_FAIL:
+                error = ESP_FAIL;
+                break;
+            case HTTPD_SOCK_ERR_INVALID:
+                error = ESP_ERR_INVALID_ARG;
+                break;
+            case HTTPD_SOCK_ERR_TIMEOUT:
+                error = ESP_ERR_TIMEOUT;
+                break;
+            default:
+                error = ESP_FAIL;
+                break;
+        }
+        return false;
+    }
+
+    buf[received] = '\0';
+    error = ESP_OK;
+    return true;
 }
 
 esp_err_t Webserver::stream_handler(httpd_req_t* req)
@@ -235,7 +401,7 @@ bool Webserver::start_webserver(esp_err_t& error)
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.task_priority = 5;
     config.stack_size = 8192;
-    config.max_uri_handlers = 8;
+    config.max_uri_handlers = 16;
     config.max_open_sockets = 7;
 
     error = httpd_start(&server_handle, &config);
@@ -323,6 +489,40 @@ bool Webserver::start_webserver(esp_err_t& error)
     if (error != ESP_OK)
     {
         ESP_LOGE(TAG, "httpd_register_uri_handler/ws_handler: %s", esp_err_to_name(error));
+        return false;
+    }
+
+    httpd_uri_t wifi_credentials_get = {
+        .uri = "/wifi/credentials",
+        .method = HTTP_GET,
+        .handler = wifi_credentials_get_handler,
+        .user_ctx = nullptr,
+        .is_websocket = false,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = nullptr,
+    };
+    error = httpd_register_uri_handler(server_handle, &wifi_credentials_get);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_register_uri_handler/wifi_credentials_get_handler: %s",
+                 esp_err_to_name(error));
+        return false;
+    }
+
+    httpd_uri_t wifi_credentials_post = {
+        .uri = "/wifi/credentials",
+        .method = HTTP_POST,
+        .handler = wifi_credentials_post_handler,
+        .user_ctx = nullptr,
+        .is_websocket = false,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = nullptr,
+    };
+    error = httpd_register_uri_handler(server_handle, &wifi_credentials_post);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_register_uri_handler/wifi_credentials_post_handler: %s",
+                 esp_err_to_name(error));
         return false;
     }
 

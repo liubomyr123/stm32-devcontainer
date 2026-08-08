@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import '../styles/Settings.css';
 
 type TestStatus = 'idle' | 'testing' | 'success' | 'failed';
@@ -6,15 +6,51 @@ type TestStatus = 'idle' | 'testing' | 'success' | 'failed';
 function Settings() {
   const [ssid, setSsid] = useState('');
   const [password, setPassword] = useState('');
+
+  const [savedSsid, setSavedSsid] = useState('');
+  const [savedPassword, setSavedPassword] = useState('');
+
   const [staMode, setStaMode] = useState(false);
   const [testStatus, setTestStatus] = useState<TestStatus>('idle');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'failed'>(
+    'idle'
+  );
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSave = () => {
-    // TODO: POST /wifi/credentials
-    setSaveStatus('saved');
-    setTimeout(() => setSaveStatus('idle'), 2000);
+  const getCanSave = () => {
+    return (
+      ssid.trim() &&
+      password.trim() &&
+      (ssid !== savedSsid || password !== savedPassword)
+    );
+  };
+
+  const handleSave = async () => {
+    if (!getCanSave()) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/wifi/credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ssid, password }),
+      });
+      if (res.ok) {
+        setSavedSsid(ssid);
+        setSavedPassword(password);
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      } else {
+        console.error('Save failed:', await res.text());
+        setSaveStatus('failed');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      }
+    } catch (err) {
+      console.error('Save request failed:', err);
+      setSaveStatus('failed');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }
   };
 
   const handleTest = () => {
@@ -26,6 +62,23 @@ function Settings() {
     // TODO: POST /wifi/sta or /wifi/ap depending on new state
     setStaMode((prev) => !prev);
   };
+
+  useEffect(() => {
+    fetch('/wifi/credentials')
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (data.has_saved) {
+          setSsid(data.ssid);
+          setPassword(data.password);
+          setSavedSsid(data.ssid);
+          setSavedPassword(data.password);
+        }
+      })
+      .catch((err) => console.error('Failed to load credentials:', err));
+  }, []);
 
   return (
     <div className="wifi-settings">
@@ -71,6 +124,7 @@ function Settings() {
         <button
           onClick={handleSave}
           className="wifi-settings__btn"
+          disabled={!getCanSave()}
         >
           Save
         </button>
@@ -87,6 +141,11 @@ function Settings() {
       {saveStatus === 'saved' && (
         <div className="wifi-settings__message wifi-settings__message--success">
           Saved
+        </div>
+      )}
+      {saveStatus === 'failed' && (
+        <div className="wifi-settings__message wifi-settings__message--error">
+          Failed to save
         </div>
       )}
 

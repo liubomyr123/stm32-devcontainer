@@ -20,6 +20,10 @@ class Webserver
     static esp_err_t stream_handler(httpd_req_t* req);
     static esp_err_t ws_handler(httpd_req_t* req);
 
+    static esp_err_t wifi_credentials_get_handler(httpd_req_t* req);
+    static esp_err_t wifi_credentials_post_handler(httpd_req_t* req);
+    static bool read_json_body(httpd_req_t* req, char* buf, size_t buf_len, esp_err_t& error);
+
    public:
     Webserver(/* args */);
     ~Webserver();
