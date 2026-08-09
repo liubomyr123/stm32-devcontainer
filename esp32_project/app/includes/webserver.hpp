@@ -26,6 +26,7 @@ class Webserver
     static esp_err_t wifi_ap_handler(httpd_req_t* req);
     static esp_err_t wifi_sta_handler(httpd_req_t* req);
     static esp_err_t wifi_status_handler(httpd_req_t* req);
+    static esp_err_t wifi_sta_test_handler(httpd_req_t* req);
 
    public:
     Webserver(/* args */);

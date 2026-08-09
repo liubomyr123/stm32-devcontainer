@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import '../styles/Settings.css';
 
 type TestStatus = 'idle' | 'testing' | 'success' | 'failed';
+type SaveStatus = 'idle' | 'saved' | 'failed';
 
 function Settings() {
   const [ssid, setSsid] = useState('');
@@ -12,9 +13,7 @@ function Settings() {
 
   const [staMode, setStaMode] = useState(false);
   const [testStatus, setTestStatus] = useState<TestStatus>('idle');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'failed'>(
-    'idle'
-  );
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [showPassword, setShowPassword] = useState(false);
 
   const [staConnecting, setStaConnecting] = useState(false);
@@ -56,9 +55,33 @@ function Settings() {
     }
   };
 
-  const handleTest = () => {
-    // TODO: POST /wifi/test
+  const handleTest = async () => {
+    if (!ssid.trim() || !password.trim() || staMode) {
+      return;
+    }
+
     setTestStatus('testing');
+
+    try {
+      const res = await fetch('/wifi/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ssid, password }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setTestStatus(data.connected ? 'success' : 'failed');
+      } else {
+        console.error('Test failed:', await res.text());
+        setTestStatus('failed');
+      }
+    } catch (err) {
+      console.error('Test request failed:', err);
+      setTestStatus('failed');
+    } finally {
+      setTimeout(() => setTestStatus('idle'), 3000);
+    }
   };
 
   const handleToggle = async () => {
@@ -187,7 +210,7 @@ function Settings() {
         <button
           onClick={handleTest}
           className="wifi-settings__btn"
-          disabled={!ssid || !password || testStatus === 'testing'}
+          disabled={!ssid || !password || testStatus === 'testing' || staMode}
         >
           {testStatus === 'testing' ? 'Testing...' : 'Test STA'}
         </button>

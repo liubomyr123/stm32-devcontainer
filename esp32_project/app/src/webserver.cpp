@@ -448,6 +448,106 @@ esp_err_t Webserver::wifi_status_handler(httpd_req_t* req)
     return ESP_OK;
 }
 
+esp_err_t Webserver::wifi_sta_test_handler(httpd_req_t* req)
+{
+    esp_err_t error;
+    auto& ctx = AppContext::get();
+
+    if (ctx.wifi_manager.isStaActive())
+    {
+        ESP_LOGW(TAG, "Cannot test STA connection while already in STA mode");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Switch to AP mode before testing");
+        return ESP_FAIL;
+    }
+
+    char body[256] = {};
+    if (!read_json_body(req, body, sizeof(body), error))
+    {
+        switch (error)
+        {
+            case ESP_ERR_INVALID_SIZE:
+                httpd_resp_send_err(req, HTTPD_413_CONTENT_TOO_LARGE, "Body too large");
+                break;
+            case ESP_ERR_TIMEOUT:
+                httpd_resp_send_408(req);
+                break;
+            case ESP_ERR_INVALID_ARG:
+                httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid request");
+                break;
+            default:
+                httpd_resp_send_500(req);
+                break;
+        }
+        return ESP_FAIL;
+    }
+
+    cJSON* json = cJSON_Parse(body);
+    if (json == nullptr)
+    {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    cJSON* ssid = cJSON_GetObjectItem(json, "ssid");
+    cJSON* password = cJSON_GetObjectItem(json, "password");
+
+    if (!ssid || !password)
+    {
+        ESP_LOGE(TAG, "Missing ssid or password field in JSON");
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing ssid or password field");
+        return ESP_FAIL;
+    }
+
+    if (!cJSON_IsString(ssid) || !cJSON_IsString(password))
+    {
+        ESP_LOGE(TAG, "ssid or password field is not a string");
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "ssid and password must be strings");
+        return ESP_FAIL;
+    }
+
+    bool connected = false;
+    bool ok = ctx.wifi_manager.testStaConnection(ssid->valuestring,      //
+                                                 password->valuestring,  //
+                                                 error,                  //
+                                                 connected);
+
+    cJSON_Delete(json);
+
+    if (!ok)
+    {
+        ESP_LOGE(TAG, "testStaConnection failed: %s", esp_err_to_name(error));
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    cJSON* resp_json = cJSON_CreateObject();
+    cJSON_AddBoolToObject(resp_json, "connected", connected);
+
+    char* response = cJSON_PrintUnformatted(resp_json);
+    error = httpd_resp_set_type(req, "application/json");
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_set_type: %s", esp_err_to_name(error));
+        cJSON_free(response);
+        cJSON_Delete(resp_json);
+        return ESP_FAIL;
+    }
+
+    error = httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    cJSON_free(response);
+    cJSON_Delete(resp_json);
+
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_send: %s", esp_err_to_name(error));
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
 esp_err_t Webserver::stream_handler(httpd_req_t* req)
 {
     esp_err_t error;
@@ -731,6 +831,23 @@ bool Webserver::start_webserver(esp_err_t& error)
     if (error != ESP_OK)
     {
         ESP_LOGE(TAG, "httpd_register_uri_handler/wifi_status_handler: %s", esp_err_to_name(error));
+        return false;
+    }
+
+    httpd_uri_t wifi_sta_test = {
+        .uri = "/wifi/test",
+        .method = HTTP_POST,
+        .handler = wifi_sta_test_handler,
+        .user_ctx = nullptr,
+        .is_websocket = false,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = nullptr,
+    };
+    error = httpd_register_uri_handler(server_handle, &wifi_sta_test);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_register_uri_handler/wifi_sta_test_handler: %s",
+                 esp_err_to_name(error));
         return false;
     }
 
