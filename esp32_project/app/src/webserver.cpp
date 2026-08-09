@@ -407,22 +407,20 @@ esp_err_t Webserver::wifi_status_handler(httpd_req_t* req)
 
     bool sta_active = ctx.wifi_manager.isStaActive();
 
+    esp_ip4_addr_t ap_ip = ctx.wifi_manager.get_ap_ip();
+    char ap_ip_str[16];
+    snprintf(ap_ip_str, sizeof(ap_ip_str), IPSTR, IP2STR(&ap_ip));
+
     cJSON* resp_json = cJSON_CreateObject();
     cJSON_AddBoolToObject(resp_json, "sta_active", sta_active);
+    cJSON_AddStringToObject(resp_json, "ap_ip", ap_ip_str);
 
     if (sta_active)
     {
         esp_ip4_addr_t sta_ip = ctx.wifi_manager.get_sta_ip();
-        char ip_str[16];
-        snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&sta_ip));
-        cJSON_AddStringToObject(resp_json, "ip", ip_str);
-    }
-    else
-    {
-        esp_ip4_addr_t ap_ip = ctx.wifi_manager.get_ap_ip();
-        char ip_str[16];
-        snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&ap_ip));
-        cJSON_AddStringToObject(resp_json, "ip", ip_str);
+        char sta_ip_str[16];
+        snprintf(sta_ip_str, sizeof(sta_ip_str), IPSTR, IP2STR(&sta_ip));
+        cJSON_AddStringToObject(resp_json, "sta_ip", sta_ip_str);
     }
 
     char* response = cJSON_PrintUnformatted(resp_json);

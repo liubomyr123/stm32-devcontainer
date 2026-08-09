@@ -18,6 +18,7 @@ function Settings() {
 
   const [staConnecting, setStaConnecting] = useState(false);
   const [displayIp, setDisplayIp] = useState<string | null>(null);
+  const [apIp, setApIp] = useState<string | null>(null);
 
   const getCanSave = () => {
     return (
@@ -87,29 +88,38 @@ function Settings() {
   const handleToggle = async () => {
     setStaConnecting(true);
 
+    if (staMode) {
+      if (apIp) {
+        setDisplayIp(apIp);
+      }
+      setStaMode(false);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+      try {
+        await fetch('/wifi/ap', { method: 'POST', signal: controller.signal });
+      } catch (err) {
+        console.warn('Connection cut during STA→AP switch (expected):', err);
+      } finally {
+        clearTimeout(timeoutId);
+        setStaConnecting(false);
+      }
+      return;
+    }
+
     try {
-      if (staMode) {
-        const res = await fetch('/wifi/ap', { method: 'POST' });
-        if (res.ok) {
-          const data = await res.json();
-          setStaMode(false);
+      const res = await fetch('/wifi/sta', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setStaMode(data.connected);
+        if (data.connected) {
           setDisplayIp(data.ip);
         } else {
-          console.error('Failed to switch to AP:', await res.text());
+          console.error('STA connection failed, stayed on AP');
         }
       } else {
-        const res = await fetch('/wifi/sta', { method: 'POST' });
-        if (res.ok) {
-          const data = await res.json();
-          setStaMode(data.connected);
-          if (data.connected) {
-            setDisplayIp(data.ip);
-          } else {
-            console.error('STA connection failed, stayed on AP');
-          }
-        } else {
-          console.error('Failed to switch to STA:', await res.text());
-        }
+        console.error('Failed to switch to STA:', await res.text());
       }
     } catch (err) {
       console.error('Toggle request failed:', err);
@@ -143,7 +153,8 @@ function Settings() {
       })
       .then((data) => {
         setStaMode(data.sta_active);
-        setDisplayIp(data.ip);
+        setApIp(data.ap_ip);
+        setDisplayIp(data.sta_active ? data.sta_ip : data.ap_ip);
       })
       .catch((err) => console.error('Failed to load wifi status:', err));
   }, []);
