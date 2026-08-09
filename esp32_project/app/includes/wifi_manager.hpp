@@ -26,8 +26,13 @@ class WifiManager
 
     bool init(esp_err_t& error);
     esp_ip4_addr_t get_ap_ip();
-    bool testStaConnection(const char* ssid, const char* password, esp_err_t& error,
-                           bool& out_connected);
+    esp_ip4_addr_t get_sta_ip();
+    bool isStaActive();
+    bool testStaConnection(const char* ssid, const char* password,  //
+                           esp_err_t& error, bool& out_connected);
+    bool applySTA(const char* ssid, const char* password,  //
+                  esp_err_t& error, bool& out_connected);
+    bool applyAP(esp_err_t& error);
 
     bool saveStaCredentials(const char* ssid, const char* password);
     bool loadStaCredentials(char* ssid_out, size_t ssid_len, char* password_out,

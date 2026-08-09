@@ -140,7 +140,7 @@ esp_err_t Webserver::wifi_credentials_get_handler(httpd_req_t* req)
     char password[WifiManager::PASSWORD_MAX_LEN] = {};
 
     bool has_saved =
-        ctx.wifi_manager.loadStaCredentials(ssid, sizeof(ssid), password, sizeof(password));
+        ctx.wifi_manager.loadStaCredentials(ssid, sizeof(ssid), password, sizeof(password));  //
 
     const size_t ssid_len = strlen(ssid);
     const size_t password_len = strlen(password);
@@ -286,6 +286,166 @@ bool Webserver::read_json_body(httpd_req_t* req, char* buf, size_t buf_len, esp_
     buf[received] = '\0';
     error = ESP_OK;
     return true;
+}
+
+esp_err_t Webserver::wifi_ap_handler(httpd_req_t* req)
+{
+    esp_err_t error;
+    auto& ctx = AppContext::get();
+
+    if (!ctx.wifi_manager.applyAP(error))
+    {
+        ESP_LOGE(TAG, "applyAP failed: %s", esp_err_to_name(error));
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    esp_ip4_addr_t ap_ip = ctx.wifi_manager.get_ap_ip();
+    char ip_str[16];
+    snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&ap_ip));
+
+    cJSON* resp_json = cJSON_CreateObject();
+    cJSON_AddStringToObject(resp_json, "ip", ip_str);
+
+    char* response = cJSON_PrintUnformatted(resp_json);
+    error = httpd_resp_set_type(req, "application/json");
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_set_type: %s", esp_err_to_name(error));
+        cJSON_free(response);
+        cJSON_Delete(resp_json);
+        return ESP_FAIL;
+    }
+
+    error = httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    cJSON_free(response);
+    cJSON_Delete(resp_json);
+
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_send: %s", esp_err_to_name(error));
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t Webserver::wifi_sta_handler(httpd_req_t* req)
+{
+    esp_err_t error;
+    auto& ctx = AppContext::get();
+
+    char ssid[WifiManager::SSID_MAX_LEN] = {};
+    char password[WifiManager::PASSWORD_MAX_LEN] = {};
+
+    bool has_saved =
+        ctx.wifi_manager.loadStaCredentials(ssid, sizeof(ssid), password, sizeof(password));
+
+    const size_t ssid_len = strlen(ssid);
+    const size_t password_len = strlen(password);
+    if (ssid_len > 0)
+    {
+        ESP_LOGI(TAG, "SSID (len: %d) was found in NVS", ssid_len);
+    }
+    if (password_len > 0)
+    {
+        ESP_LOGI(TAG, "Password (len: %d) was found in NVS", password_len);
+    }
+    if (!has_saved)
+    {
+        ESP_LOGE(TAG, "Credentials was not found");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No saved credentials");
+        return ESP_FAIL;
+    }
+
+    bool connected = false;
+    if (!ctx.wifi_manager.applySTA(ssid, password, error, connected))
+    {
+        ESP_LOGE(TAG, "applySTA failed: %s", esp_err_to_name(error));
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    cJSON* resp_json = cJSON_CreateObject();
+    cJSON_AddBoolToObject(resp_json, "connected", connected);
+
+    if (connected)
+    {
+        esp_ip4_addr_t sta_ip = ctx.wifi_manager.get_sta_ip();
+        char ip_str[16];
+        snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&sta_ip));
+        cJSON_AddStringToObject(resp_json, "ip", ip_str);
+    }
+
+    char* response = cJSON_PrintUnformatted(resp_json);
+    error = httpd_resp_set_type(req, "application/json");
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_set_type: %s", esp_err_to_name(error));
+        cJSON_free(response);
+        cJSON_Delete(resp_json);
+        return ESP_FAIL;
+    }
+
+    error = httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    cJSON_free(response);
+    cJSON_Delete(resp_json);
+
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_send: %s", esp_err_to_name(error));
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t Webserver::wifi_status_handler(httpd_req_t* req)
+{
+    esp_err_t error;
+    auto& ctx = AppContext::get();
+
+    bool sta_active = ctx.wifi_manager.isStaActive();
+
+    cJSON* resp_json = cJSON_CreateObject();
+    cJSON_AddBoolToObject(resp_json, "sta_active", sta_active);
+
+    if (sta_active)
+    {
+        esp_ip4_addr_t sta_ip = ctx.wifi_manager.get_sta_ip();
+        char ip_str[16];
+        snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&sta_ip));
+        cJSON_AddStringToObject(resp_json, "ip", ip_str);
+    }
+    else
+    {
+        esp_ip4_addr_t ap_ip = ctx.wifi_manager.get_ap_ip();
+        char ip_str[16];
+        snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&ap_ip));
+        cJSON_AddStringToObject(resp_json, "ip", ip_str);
+    }
+
+    char* response = cJSON_PrintUnformatted(resp_json);
+    error = httpd_resp_set_type(req, "application/json");
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_set_type: %s", esp_err_to_name(error));
+        cJSON_free(response);
+        cJSON_Delete(resp_json);
+        return ESP_FAIL;
+    }
+
+    error = httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    cJSON_free(response);
+    cJSON_Delete(resp_json);
+
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_resp_send: %s", esp_err_to_name(error));
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
 }
 
 esp_err_t Webserver::stream_handler(httpd_req_t* req)
@@ -523,6 +683,54 @@ bool Webserver::start_webserver(esp_err_t& error)
     {
         ESP_LOGE(TAG, "httpd_register_uri_handler/wifi_credentials_post_handler: %s",
                  esp_err_to_name(error));
+        return false;
+    }
+
+    httpd_uri_t wifi_ap = {
+        .uri = "/wifi/ap",
+        .method = HTTP_POST,
+        .handler = wifi_ap_handler,
+        .user_ctx = nullptr,
+        .is_websocket = false,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = nullptr,
+    };
+    error = httpd_register_uri_handler(server_handle, &wifi_ap);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_register_uri_handler/wifi_ap_handler: %s", esp_err_to_name(error));
+        return false;
+    }
+
+    httpd_uri_t wifi_sta = {
+        .uri = "/wifi/sta",
+        .method = HTTP_POST,
+        .handler = wifi_sta_handler,
+        .user_ctx = nullptr,
+        .is_websocket = false,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = nullptr,
+    };
+    error = httpd_register_uri_handler(server_handle, &wifi_sta);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_register_uri_handler/wifi_sta_handler: %s", esp_err_to_name(error));
+        return false;
+    }
+
+    httpd_uri_t wifi_status = {
+        .uri = "/wifi/status",
+        .method = HTTP_GET,
+        .handler = wifi_status_handler,
+        .user_ctx = nullptr,
+        .is_websocket = false,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = nullptr,
+    };
+    error = httpd_register_uri_handler(server_handle, &wifi_status);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "httpd_register_uri_handler/wifi_status_handler: %s", esp_err_to_name(error));
         return false;
     }
 

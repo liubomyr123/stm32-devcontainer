@@ -17,6 +17,9 @@ function Settings() {
   );
   const [showPassword, setShowPassword] = useState(false);
 
+  const [staConnecting, setStaConnecting] = useState(false);
+  const [displayIp, setDisplayIp] = useState<string | null>(null);
+
   const getCanSave = () => {
     return (
       ssid.trim() &&
@@ -58,9 +61,38 @@ function Settings() {
     setTestStatus('testing');
   };
 
-  const handleToggle = () => {
-    // TODO: POST /wifi/sta or /wifi/ap depending on new state
-    setStaMode((prev) => !prev);
+  const handleToggle = async () => {
+    setStaConnecting(true);
+
+    try {
+      if (staMode) {
+        const res = await fetch('/wifi/ap', { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          setStaMode(false);
+          setDisplayIp(data.ip);
+        } else {
+          console.error('Failed to switch to AP:', await res.text());
+        }
+      } else {
+        const res = await fetch('/wifi/sta', { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          setStaMode(data.connected);
+          if (data.connected) {
+            setDisplayIp(data.ip);
+          } else {
+            console.error('STA connection failed, stayed on AP');
+          }
+        } else {
+          console.error('Failed to switch to STA:', await res.text());
+        }
+      }
+    } catch (err) {
+      console.error('Toggle request failed:', err);
+    } finally {
+      setStaConnecting(false);
+    }
   };
 
   useEffect(() => {
@@ -79,6 +111,29 @@ function Settings() {
       })
       .catch((err) => console.error('Failed to load credentials:', err));
   }, []);
+
+  useEffect(() => {
+    fetch('/wifi/status')
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        setStaMode(data.sta_active);
+        setDisplayIp(data.ip);
+      })
+      .catch((err) => console.error('Failed to load wifi status:', err));
+  }, []);
+
+  const getToggleLabel = () => {
+    if (staConnecting) {
+      return 'Switching...';
+    }
+    if (staMode) {
+      return 'Control via shared network (STA)';
+    }
+    return 'Direct control (AP)';
+  };
 
   return (
     <div className="wifi-settings">
@@ -161,18 +216,30 @@ function Settings() {
       )}
 
       <div className="wifi-settings__toggle-row">
-        <span>
-          {staMode ? 'Control via shared network (STA)' : 'Direct control (AP)'}
-        </span>
+        <span>{getToggleLabel()}</span>
         <label className="wifi-settings__switch">
           <input
             type="checkbox"
             checked={staMode}
             onChange={handleToggle}
+            disabled={staConnecting}
           />
           <span className="wifi-settings__slider" />
         </label>
       </div>
+
+      {displayIp && (
+        <div className="wifi-settings__ip-notice">
+          Open:{' '}
+          <a
+            href={`http://${displayIp}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            http://{displayIp}
+          </a>
+        </div>
+      )}
     </div>
   );
 }

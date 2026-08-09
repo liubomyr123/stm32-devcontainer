@@ -184,3 +184,24 @@
 .wifi-settings__password-toggle:active {
   background: transparent;
 }
+
+.wifi-settings__ip-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(74, 158, 255, 0.15);
+  border-radius: var(--radius);
+  font-size: 12px;
+  text-align: left;
+}
+
+.wifi-settings__ip-notice strong {
+  user-select: all;
+}
+
+.wifi-settings__ip-notice a {
+  color: var(--btn-active);
+  font-weight: 600;
+}

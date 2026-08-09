@@ -213,9 +213,38 @@ esp_ip4_addr_t WifiManager::get_ap_ip()
     return ip_info.ip;
 }
 
+esp_ip4_addr_t WifiManager::get_sta_ip()
+{
+    esp_netif_ip_info_t ip_info = {};
+    esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    if (netif == nullptr)
+    {
+        ESP_LOGE(TAG, "esp_netif_get_handle_from_ifkey: STA netif not found");
+        return ip_info.ip;
+    }
+    esp_err_t error = esp_netif_get_ip_info(netif, &ip_info);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_netif_get_ip_info: %s", esp_err_to_name(error));
+        return ip_info.ip;
+    }
+    return ip_info.ip;
+}
+
+bool WifiManager::isStaActive()
+{
+    wifi_mode_t current_mode;
+    if (esp_wifi_get_mode(&current_mode) != ESP_OK)
+    {
+        return false;
+    }
+    return current_mode == WIFI_MODE_STA || current_mode == WIFI_MODE_APSTA;
+}
+
 bool WifiManager::testStaConnection(const char* ssid, const char* password, esp_err_t& error,
                                     bool& out_connected)
 {
+    out_connected = false;
     if (!initialized)
     {
         ESP_LOGE(TAG, "WifiManager not initialized");
@@ -337,5 +366,167 @@ bool WifiManager::loadStaCredentials(char* ssid_out, size_t ssid_len, char* pass
         return false;
     }
 
+    return true;
+}
+
+bool WifiManager::applySTA(const char* ssid, const char* password, esp_err_t& error,
+                           bool& out_connected)
+{
+    out_connected = false;
+    if (!initialized)
+    {
+        ESP_LOGE(TAG, "WifiManager not initialized");
+        return false;
+    }
+
+    wifi_mode_t current_mode;
+    error = esp_wifi_get_mode(&current_mode);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_get_mode: %s", esp_err_to_name(error));
+        return false;
+    }
+
+    if (current_mode == WIFI_MODE_STA || current_mode == WIFI_MODE_APSTA)
+    {
+        wifi_ap_record_t ap_info;
+        esp_err_t ap_info_error = esp_wifi_sta_get_ap_info(&ap_info);
+
+        switch (ap_info_error)
+        {
+            case ESP_OK:
+            {
+                if (strcmp((const char*)ap_info.ssid, ssid) == 0)
+                {
+                    ESP_LOGI(TAG, "applySTA: already connected to '%s'", ssid);
+                    out_connected = true;
+                    error = ESP_OK;
+                    return true;
+                }
+
+                ESP_LOGI(TAG, "applySTA: connected to different SSID '%s', switching to '%s'",
+                         ap_info.ssid, ssid);
+
+                error = esp_wifi_disconnect();
+                if (error != ESP_OK)
+                {
+                    ESP_LOGW(TAG, "esp_wifi_disconnect: %s", esp_err_to_name(error));
+                }
+                break;
+            }
+            case ESP_ERR_WIFI_NOT_CONNECT:
+            {
+                ESP_LOGI(TAG, "applySTA: STA interface initialized but not connected, proceeding");
+                break;
+            }
+            case ESP_ERR_WIFI_CONN:
+            {
+                ESP_LOGW(TAG, "applySTA: STA interface not initialized, proceeding anyway");
+                break;
+            }
+            default:
+            {
+                ESP_LOGW(TAG, "esp_wifi_sta_get_ap_info: unexpected error %s",
+                         esp_err_to_name(ap_info_error));
+                break;
+            }
+        }
+    }
+
+    xEventGroupClearBits(wifi_event_group_, WIFI_STA_CONNECTED_BIT | WIFI_STA_FAILED_BIT);
+
+    error = esp_wifi_set_mode(WIFI_MODE_APSTA);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_set_mode(APSTA): %s", esp_err_to_name(error));
+        return false;
+    }
+
+    wifi_config_t sta_config = {};
+    strncpy((char*)sta_config.sta.ssid, ssid, sizeof(sta_config.sta.ssid) - 1);
+    strncpy((char*)sta_config.sta.password, password, sizeof(sta_config.sta.password) - 1);
+
+    error = esp_wifi_set_config(WIFI_IF_STA, &sta_config);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_set_config(STA): %s", esp_err_to_name(error));
+        return false;
+    }
+
+    error = esp_wifi_connect();
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_connect: %s", esp_err_to_name(error));
+        return false;
+    }
+
+    EventBits_t bits = xEventGroupWaitBits(wifi_event_group_,                             //
+                                           WIFI_STA_CONNECTED_BIT | WIFI_STA_FAILED_BIT,  //
+                                           pdFALSE,                                       //
+                                           pdFALSE,                                       //
+                                           pdMS_TO_TICKS(10000));
+
+    if ((bits & (WIFI_STA_CONNECTED_BIT | WIFI_STA_FAILED_BIT)) == 0)
+    {
+        ESP_LOGW(TAG, "applySTA to '%s': timeout, no event received", ssid);
+    }
+
+    out_connected = (bits & WIFI_STA_CONNECTED_BIT) != 0;
+
+    if (!out_connected)
+    {
+        ESP_LOGW(TAG, "applySTA to '%s': FAILED, reverting to AP-only", ssid);
+        error = esp_wifi_set_mode(WIFI_MODE_AP);
+        if (error != ESP_OK)
+        {
+            ESP_LOGE(TAG, "esp_wifi_set_mode(AP) revert: %s", esp_err_to_name(error));
+            return false;
+        }
+        return true;
+    }
+
+    ESP_LOGI(TAG, "applySTA to '%s': SUCCESS, staying connected (APSTA)", ssid);
+    return true;
+}
+
+bool WifiManager::applyAP(esp_err_t& error)
+{
+    if (!initialized)
+    {
+        ESP_LOGE(TAG, "WifiManager not initialized");
+        return false;
+    }
+
+    wifi_mode_t current_mode;
+    error = esp_wifi_get_mode(&current_mode);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_get_mode: %s", esp_err_to_name(error));
+        return false;
+    }
+
+    if (current_mode == WIFI_MODE_AP)
+    {
+        ESP_LOGI(TAG, "applyAP: already in AP-only mode");
+        return true;
+    }
+
+    if (current_mode == WIFI_MODE_APSTA || current_mode == WIFI_MODE_STA)
+    {
+        error = esp_wifi_disconnect();
+        if (error != ESP_OK)
+        {
+            ESP_LOGW(TAG, "esp_wifi_disconnect: %s (continuing anyway)", esp_err_to_name(error));
+        }
+    }
+
+    error = esp_wifi_set_mode(WIFI_MODE_AP);
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_set_mode(AP): %s", esp_err_to_name(error));
+        return false;
+    }
+
+    ESP_LOGI(TAG, "applyAP: switched to AP-only mode");
     return true;
 }
