@@ -1,13 +1,12 @@
 #include "include/logger.hpp"
 
 extern UART_HandleTypeDef huart1;
+static osMutexId_t log_mutex = nullptr;
 
-// static osMutexId_t log_mutex = nullptr;   // TODO: розкоментувати коли додамо FreeRTOS
-
-// extern "C" void logger_init()
-// {
-//     log_mutex = osMutexNew(nullptr);
-// }
+extern "C" void logger_init()
+{
+    log_mutex = osMutexNew(nullptr);
+}
 
 extern "C" int __io_putchar(int ch)
 {
@@ -66,17 +65,19 @@ void Logger::log(LogLevel level, const char* tag, const char* file, int line, co
         return;
     }
 
-    // if (log_mutex != nullptr)   // TODO: розкоментувати коли додамо FreeRTOS
-    // {
-    //     osMutexAcquire(log_mutex, osWaitForever);
-    // }
+    if (log_mutex != nullptr)
+    {
+        osMutexAcquire(log_mutex, osWaitForever);
+    }
 
+    // Форматований час
     uint32_t tick = HAL_GetTick();
     uint32_t ms = tick % 1000;
     uint32_t sec = (tick / 1000) % 60;
     uint32_t min = (tick / 60000) % 60;
     uint32_t hour = tick / 3600000;
 
+    // Тільки ім'я файлу без повного шляху
     const char* filename = file;
     for (const char* p = file; *p != '\0'; p++)
     {
@@ -91,10 +92,10 @@ void Logger::log(LogLevel level, const char* tag, const char* file, int line, co
     vprintf(fmt, args);
     printf("\r\n");
 
-    // if (log_mutex != nullptr)   // TODO: розкоментувати коли додамо FreeRTOS
-    // {
-    //     osMutexRelease(log_mutex);
-    // }
+    if (log_mutex != nullptr)
+    {
+        osMutexRelease(log_mutex);
+    }
 }
 
 const char* Logger::levelToString(LogLevel level)

@@ -4,7 +4,7 @@
 #include <cstdarg>
 #include <cstdio>
 
-// #include "cmsis_os.h"
+#include "cmsis_os.h"
 #include "stm32f4xx_hal.h"
 
 enum class LogLevel

@@ -145,7 +145,6 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
-  LOG_INFO("TAG", "Hello!");
   
   // Запускаємо DMA прийом на USART3
   HAL_UART_Receive_DMA(&huart3, uart3_rx_buf, UART_RX_BUF_SIZE);
@@ -160,6 +159,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   logger_init();
+  LOG_INFO("TAG", "Hello!");
   uart_manager_init();
   /* USER CODE END RTOS_MUTEX */
 
