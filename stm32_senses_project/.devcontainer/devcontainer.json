@@ -1,0 +1,36 @@
+{
+  "name": "STM32 Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/workspace/stm32_senses_project",
+  "mounts": [
+    "source=${localWorkspaceFolder}/..,target=/workspace,type=bind"
+  ],
+  "runArgs": [
+    "--privileged",
+    "--volume=/dev:/dev"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools",
+        "mcu-debug.debug-tracker-vscode",
+        "mcu-debug.memory-view",
+        "mcu-debug.peripheral-viewer",
+        "marus25.cortex-debug",
+        "llvm-vs-code-extensions.vscode-clangd",
+        "streetsidesoftware.code-spell-checker"
+      ],
+      "settings": {
+        "cmake.generator": "Ninja",
+        "cmake.configureOnOpen": true,
+        "cmake.sourceDirectory": "/workspace/stm32_senses_project",
+        "cortex-debug.armToolchainPath": "/usr/bin"
+      }
+    }
+  },
+  "postCreateCommand": "sed -i 's/\\r//' /workspace/stm32_senses_project/*.sh && cmake --version && arm-none-eabi-gcc --version",
+  "remoteUser": "developer"
+}

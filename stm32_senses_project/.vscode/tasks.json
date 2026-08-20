@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start OpenOCD",
+            "type": "shell",
+            "command": "openocd -f interface/stlink.cfg -f target/stm32f4x.cfg",
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "."
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Open On-Chip Debugger",
+                    "endsPattern": "Listening on port 3333"
+                }
+            }
+        }
+    ]
+}

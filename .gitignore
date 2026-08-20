@@ -5,6 +5,8 @@ esp32_project/esp/build/
 esp32_project/logs/
 stm32_remote_project/stm32/build/
 stm32_remote_project/logs/
+stm32_senses_project/stm32/build/
+stm32_senses_project/logs/
 
 # VS Code
 .vscode/ipch/
