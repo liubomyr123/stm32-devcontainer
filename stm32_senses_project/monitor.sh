@@ -1,13 +1,14 @@
 #!/bin/bash
 
 echo "==> Looking for serial device..."
-DEVICE=$(ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | head -n 1)
+DEVICE="/dev/ttyUSB1"
+# DEVICE=$(ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | head -n 1)
 
-if [ -z "$DEVICE" ]; then
-    echo "==> No serial device found. Connect FTDI and try again."
-    echo "    Checked: /dev/ttyUSB*, /dev/ttyACM*"
-    exit 1
-fi
+# if [ -z "$DEVICE" ]; then
+#     echo "==> No serial device found. Connect FTDI and try again."
+#     echo "    Checked: /dev/ttyUSB*, /dev/ttyACM*"
+#     exit 1
+# fi
 
 echo "==> Found device: $DEVICE"
 echo "==> Setting permissions..."
