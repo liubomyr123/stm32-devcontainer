@@ -289,3 +289,146 @@ bool Nrf24Radio::setRxPayloadLength(uint8_t bytes)
     writeRegister(REG_RX_PW_P0, bytes);
     return true;
 }
+
+// Записує TX payload (W_TX_PAYLOAD, Table 20) — 1-32 байти, LSByte first.
+uint8_t Nrf24Radio::writeTxPayload(const uint8_t* data, size_t length)
+{
+    std::array<uint8_t, 33> txBuf{};  // 1 опкод + максимум 32 байти даних
+    txBuf[0] = W_TX_PAYLOAD;
+    for (size_t i = 0; i < length; i++)
+    {
+        txBuf.at(i + 1) = data[i];
+    }
+
+    std::array<uint8_t, 33> rxBuf{};
+
+    beginTransaction();
+    HAL_SPI_TransmitReceive(hspi_,                              //
+                            txBuf.data(),                       //
+                            rxBuf.data(),                       //
+                            static_cast<uint16_t>(length + 1),  //
+                            HAL_MAX_DELAY);
+    endTransaction();
+
+    return rxBuf[0];  // STATUS
+}
+
+// Читає RX payload (R_RX_PAYLOAD, Table 20) — 1-32 байти, LSByte first.
+void Nrf24Radio::readRxPayload(uint8_t* buffer, size_t length)
+{
+    std::array<uint8_t, 33> txBuf{};
+    txBuf[0] = R_RX_PAYLOAD;
+    for (size_t i = 1; i <= length; i++)
+    {
+        txBuf.at(i) = 0xFF;  // "пусте"/NOP, генерує такти SCK для отримання даних
+    }
+
+    std::array<uint8_t, 33> rxBuf{};
+
+    beginTransaction();
+    HAL_SPI_TransmitReceive(hspi_,                              //
+                            txBuf.data(),                       //
+                            rxBuf.data(),                       //
+                            static_cast<uint16_t>(length + 1),  //
+                            HAL_MAX_DELAY);
+    endTransaction();
+
+    for (size_t i = 0; i < length; i++)
+    {
+        buffer[i] = rxBuf.at(i + 1);  // rxBuf[0] = STATUS, дані з rxBuf[1..]
+    }
+}
+
+bool Nrf24Radio::transmit(const uint8_t* data, uint8_t length)
+{
+    if (direction_ != Direction::Tx && direction_ != Direction::HalfDuplex)
+    {
+        LOG_ERROR(TAG, "transmit() called, but radio is not in TX mode");
+        return false;
+    }
+
+    // ...
+}
+
+// Встановлює air data rate (RF_SETUP, біти RF_DR_LOW/RF_DR_HIGH).
+// Обидві сторони (TX і RX) МАЮТЬ мати однакове значення (datasheet, 6.2) —
+// інакше пристрої просто не зрозуміють сигнал одне одного.
+bool Nrf24Radio::setAirDataRate(DataRate rate)
+{
+    /**
+        9.1 Register map table
+        06 RF_SETUP:
+        [RF_DR_LOW, RF_DR_HIGH]:
+        ‘00’ – 1Mbps
+        ‘01’ – 2Mbps
+        ‘10’ – 250kbps
+        ‘11’ – Reserved
+    */
+    uint8_t rfSetup = readRegister(REG_RF_SETUP);
+
+    rfSetup &= ~RF_SETUP_RF_DR_LOW_BIT;   // RF_DR_LOW = 0
+    rfSetup &= ~RF_SETUP_RF_DR_HIGH_BIT;  // RF_DR_HIGH = 0
+
+    switch (rate)
+    {
+        case DataRate::Mbps1:
+            break;
+        case DataRate::Mbps2:
+            rfSetup |= RF_SETUP_RF_DR_HIGH_BIT;  // RF_DR_LOW=0, RF_DR_HIGH=1
+            break;
+        case DataRate::Kbps250:
+            rfSetup |= RF_SETUP_RF_DR_LOW_BIT;  // RF_DR_LOW=1, RF_DR_HIGH=0
+            break;
+    }
+
+    writeRegister(REG_RF_SETUP, rfSetup);
+    dataRate_ = rate;
+    return true;
+}
+
+// Встановлює робочу частоту каналу (RF_CH): F0 = 2400 + RF_CH [MHz].
+bool Nrf24Radio::setChannel(uint8_t channel)
+{
+    /**
+        6.3 RF channel frequency
+        ...nRF24L01+ can operate on frequencies from 2.400GHz to 2.525GHz...
+        ...The programming resolution of the RF channel frequency setting is 1MHz...
+        ...To ensure non-overlapping channels in 2Mbps mode, the channel spacing must be 2MHz or
+       more...
+        ...At 1Mbps and 250kbps the channel bandwidth is the same or lower than the resolution of
+       the RF frequency...
+    */
+
+    /**
+        9.1 Register map table
+        05 RF_CH:
+        Bits: 6:0
+        Reset value: 0000010
+
+        7 біт дає 128 можливих комбінацій (2^7 = 128)
+        Тобто теоретично можна записати будь-яке число від 0 до 127 (0b1111111)
+        Діапазон: від 2.400GHz до 2.525GHz. Різниця: 2525 - 2400 = 125 MHz.
+        Тобто доступні нам є від 0 до 125.
+
+        Значення 126 (0b1111110) і 127 (0b1111111) можна фізично записати в регістр,
+        але вони відповідали б частотам 2526MHz і 2527MHz, які виходять за межі робочого діапазону
+    */
+
+    if (channel > 125)
+    {
+        LOG_ERROR(TAG, "setChannel(%d) exceeds valid range (0-125)", channel);
+        return false;
+    }
+
+    if (dataRate_ == DataRate::Mbps2)
+    {
+        LOG_WARNING(TAG,
+                    "Data rate is 2Mbps - channel occupies ~2MHz bandwidth. "
+                    "Ensure other RF sources (WiFi, other nRF24) are at least "
+                    "2MHz away from channel %d to avoid overlap.",
+                    channel);
+    }
+
+    writeRegister(REG_RF_CH, channel);
+    return true;
+}

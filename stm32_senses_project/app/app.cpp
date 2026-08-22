@@ -12,12 +12,14 @@ extern SPI_HandleTypeDef hspi1;
 #define NRF_CE_PORT GPIOB
 #define NRF_CE_PIN GPIO_PIN_0
 
-// Тестове значення каналу для перевірки циклу write→read
-constexpr uint8_t TEST_RF_CH_VALUE = 0b01001100;  // 76 → 2476 MHz
-constexpr uint8_t TEST_REG_RX_PW_P0_VALUE = 4;    // 4 bytes
-
 // Спільний RF-фільтр-ключ для комунікації пульт↔senses-плата (MVP, один канал)
 constexpr std::array<uint8_t, 5> SHARED_RF_FILTER_KEY = {0xE7, 0xE7, 0xE7, 0xE7, 0xE7};
+
+// Робочий канал — подалі від типових WiFi-каналів (1/6/11)
+// F0 = 2400 + 100 = 2500 MHz
+constexpr uint8_t SHARED_CHANNEL = 100;
+
+constexpr uint8_t TEST_REG_RX_PW_P0_VALUE = 4;  // 4 bytes
 
 extern "C" void app_main()
 {
@@ -33,15 +35,8 @@ extern "C" void app_main()
         vTaskDelete(nullptr);
     }
 
-    uint8_t rfChBefore = nrf.readRegister(REG_RF_CH);
-    LOG_INFO("NRF", "RF_CH (frequency channel) before write = %d (2400+%d = %d MHz, reset value)",
-             rfChBefore, rfChBefore, 2400 + rfChBefore);
-
-    nrf.writeRegister(REG_RF_CH, TEST_RF_CH_VALUE);
-    uint8_t rfChAfter = nrf.readRegister(REG_RF_CH);
-    LOG_INFO("NRF", "RF_CH (frequency channel) after write = %d (2400+%d = %d MHz)", rfChAfter,
-             rfChAfter, 2400 + rfChAfter);
-
+    nrf.setAirDataRate(DataRate::Mbps1);
+    nrf.setChannel(SHARED_CHANNEL);
     // План подальшої роботи над Nrf24Radio:
     //
     // 1) Налаштувати спільну 5-байтну адресу для обох плат

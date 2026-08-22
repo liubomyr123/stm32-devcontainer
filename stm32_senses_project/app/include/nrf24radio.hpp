@@ -34,7 +34,13 @@ constexpr uint8_t REG_EN_RXADDR = 0x02;   // Enabled RX Addresses
 constexpr uint8_t REG_SETUP_AW = 0x03;    // Setup of Address Widths
 constexpr uint8_t REG_SETUP_RETR = 0x04;  // Setup of Automatic Retransmission
 constexpr uint8_t REG_RF_CH = 0x05;       // RF Channel
-constexpr uint8_t REG_RF_SETUP = 0x06;    // RF Setup Register
+
+constexpr uint8_t REG_RF_SETUP = 0x06;  // RF Setup Register
+constexpr uint8_t RF_SETUP_CONT_WAVE_BIT = 1 << 7;
+constexpr uint8_t RF_SETUP_RF_DR_LOW_BIT = 1 << 5;
+constexpr uint8_t RF_SETUP_PLL_LOCK_BIT = 1 << 4;
+constexpr uint8_t RF_SETUP_RF_DR_HIGH_BIT = 1 << 3;
+
 constexpr uint8_t REG_STATUS = 0x07;      // Status Register
 constexpr uint8_t REG_OBSERVE_TX = 0x08;  // Transmit observe register
 constexpr uint8_t REG_RPD = 0x09;         // Received Power Detector
@@ -96,6 +102,13 @@ constexpr uint8_t RESET_FIFO_STATUS = 0b00010001;  // TX_EMPTY=1, RX_EMPTY=1
 constexpr uint8_t RESET_DYNPD = 0b00000000;  // dynamic payload вимкнено на всіх pipes
 constexpr uint8_t RESET_FEATURE = 0b00000000;  // усі додаткові фічі вимкнені
 
+enum class DataRate
+{
+    Kbps250,
+    Mbps1,
+    Mbps2,
+};
+
 enum class Direction
 {
     Tx,
@@ -143,6 +156,9 @@ class Nrf24Radio
     bool setTxRfFilterKey(const std::array<uint8_t, 5>& address);
     bool setRxRfFilterKey(const std::array<uint8_t, 5>& address);
     bool setRxPayloadLength(const uint8_t bytes);
+    bool transmit(const uint8_t* data, uint8_t length);
+    bool setAirDataRate(DataRate rate);
+    bool setChannel(uint8_t channel);
 
    private:
     static constexpr const char* TAG = "NRF24";
@@ -152,6 +168,8 @@ class Nrf24Radio
     void ceHigh();
     void ceLow();
     uint8_t writeMultiByteRegister(uint8_t reg, const uint8_t* data, size_t length);
+    uint8_t writeTxPayload(const uint8_t* data, size_t length);
+    void readRxPayload(uint8_t* buffer, size_t length);
 
     SPI_HandleTypeDef* hspi_;
 
@@ -162,4 +180,6 @@ class Nrf24Radio
     uint16_t cePin_;
 
     Direction direction_;
+    // By default: [RF_DR_LOW, RF_DR_HIGH] = [0, 1] = '01' = 2Mbps
+    DataRate dataRate_ = DataRate::Mbps2;
 };
