@@ -134,6 +134,12 @@ bool Nrf24Radio::isRxEnabled() const
 
 bool Nrf24Radio::enableTx()
 {
+    if (direction_ != Direction::Tx && direction_ != Direction::HalfDuplex)
+    {
+        LOG_ERROR(TAG, "enableTx() called, but radio is not in TX mode");
+        return false;
+    }
+
     // pwrUp = 1 | primRx = 0 | ceHigh = 1 | FIFO = 1
     uint8_t config = readRegister(REG_CONFIG);
     config |= CONFIG_PWR_UP_BIT;
@@ -150,6 +156,12 @@ bool Nrf24Radio::enableTx()
 
 bool Nrf24Radio::enableRx()
 {
+    if (direction_ != Direction::Rx && direction_ != Direction::HalfDuplex)
+    {
+        LOG_ERROR(TAG, "enableRx() called, but radio is not in RX mode");
+        return false;
+    }
+
     // pwrUp = 1 | primRx = 1 | ceHigh = 1 | FIFO = 0
     uint8_t config = readRegister(REG_CONFIG);
     config |= CONFIG_PWR_UP_BIT;
@@ -227,53 +239,53 @@ RadioState Nrf24Radio::getCurrentState() const
     return RadioState::TxMode;  // pwrUp = 1 | primRx = 0 | ceHigh = 1 | FIFO = 1
 }
 
-// RadioState Nrf24Radio::getCurrentState() const
-// {
-//     RadioState state = RadioState::Unknown;
-//     switch (mode_)
-//     {
-//         case Mode::Undefined:
-//         {
-//             state = RadioState::Unknown;
-//             break;
-//         }
-//         case Mode::Rx:
-//         {
-//             if (!isCeHigh())
-//             {
-//                 state = RadioState::StandbyI;  // when CE is set low, the nRF24L01 returns to
-//                                                // standby-I mode from both the TX and RX modes.
-//             }
-//             else
-//             {
-//                 state = RadioState::RxMode;  // To enter this mode, the nRF24L01+ must have the
-//                                              // PWR_UP bit, PRIM_RX bit and the CE pin set high.
-//             }
-//             break;
-//         }
-//         case Mode::Tx:
-//         {
-//             if (!isCeHigh())
-//             {
-//                 state = RadioState::StandbyI;  // when CE is set low, the nRF24L01 returns to
-//                                                // standby-I mode from both the TX and RX modes.
-//             }
-//             else if (isTxFifoEmpty())
-//             {
-//                 state = RadioState::StandbyII;  // enters standby-II mode if CE is held high on a
-//                                                 // PTX device with an empty TX FIFO
-//             }
-//             else
-//             {
-//                 state =
-//                     RadioState::TxMode;  // To enter this mode, the nRF24L01+ must have the
-//                     PWR_UP
-//                                          // bit set high, PRIM_RX bit set low, a payload in the
-//                                          TX
-//                                          // FIFO and a high pulse on the CE for more than 10µs.
-//             }
-//             break;
-//         }
-//     }
-//     return state;
-// }
+// Встановлює RF-фільтр-ключ передавача (TX_ADDR) — за цим самим
+// ключем приймач розпізнає, що пакет адресований саме йому.
+// Використовується лише на TX-стороні.
+bool Nrf24Radio::setTxRfFilterKey(const std::array<uint8_t, 5>& address)
+{
+    if (direction_ != Direction::Tx && direction_ != Direction::HalfDuplex)
+    {
+        LOG_ERROR(TAG, "setTxRfFilterKey() called, but radio is not in TX mode");
+        return false;
+    }
+
+    writeMultiByteRegister(REG_TX_ADDR, address.data(), address.size());
+    return true;
+}
+
+// Встановлює RF-фільтр-ключ, за яким PRX апаратно відфільтровує
+// вхідні пакети на pipe 0 (RX_ADDR_P0) — приймаються лише ті,
+// що мають точний збіг з цим ключем. Має дорівнювати TX-ключу
+// передавача, з яким плануємо спілкуватись.
+bool Nrf24Radio::setRxRfFilterKey(const std::array<uint8_t, 5>& address)
+{
+    if (direction_ != Direction::Rx && direction_ != Direction::HalfDuplex)
+    {
+        LOG_ERROR(TAG, "setRxRfFilterKey() called, but radio is not in RX mode");
+        return false;
+    }
+
+    writeMultiByteRegister(REG_RX_ADDR_P0, address.data(), address.size());
+    return true;
+}
+
+// Встановлює очікувану довжину payload на pipe 0 (RX_PW_P0) —
+// скільки байт чекати в кожному пакеті
+bool Nrf24Radio::setRxPayloadLength(uint8_t bytes)
+{
+    if (direction_ != Direction::Rx && direction_ != Direction::HalfDuplex)
+    {
+        LOG_ERROR(TAG, "setRxPayloadLength() called, but radio is not in RX mode");
+        return false;
+    }
+
+    if (bytes > 32)
+    {
+        LOG_ERROR(TAG, "setRxPayloadLength(%d) exceeds max payload size (32 bytes)", bytes);
+        return false;
+    }
+
+    writeRegister(REG_RX_PW_P0, bytes);
+    return true;
+}

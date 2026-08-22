@@ -96,12 +96,12 @@ constexpr uint8_t RESET_FIFO_STATUS = 0b00010001;  // TX_EMPTY=1, RX_EMPTY=1
 constexpr uint8_t RESET_DYNPD = 0b00000000;  // dynamic payload вимкнено на всіх pipes
 constexpr uint8_t RESET_FEATURE = 0b00000000;  // усі додаткові фічі вимкнені
 
-// enum class Mode
-// {
-//     Undefined,
-//     Tx,
-//     Rx
-// };
+enum class Direction
+{
+    Tx,
+    Rx,
+    HalfDuplex,
+};
 
 enum class RadioState
 {
@@ -122,8 +122,13 @@ class Nrf24Radio
     uint8_t writeRegister(uint8_t reg, uint8_t value) const;
 
     Nrf24Radio(SPI_HandleTypeDef* hspi, GPIO_TypeDef* csnPort, uint16_t csnPin,
-               GPIO_TypeDef* cePort, uint16_t cePin)
-        : hspi_(hspi), csnPort_(csnPort), csnPin_(csnPin), cePort_(cePort), cePin_(cePin)
+               GPIO_TypeDef* cePort, uint16_t cePin, Direction direction)
+        : hspi_(hspi),
+          csnPort_(csnPort),
+          csnPin_(csnPin),
+          cePort_(cePort),
+          cePin_(cePin),
+          direction_(direction)
     {
     }
 
@@ -135,11 +140,12 @@ class Nrf24Radio
     bool isTxFifoEmpty() const;
     bool isCeHigh() const;
     RadioState getCurrentState() const;
+    bool setTxRfFilterKey(const std::array<uint8_t, 5>& address);
+    bool setRxRfFilterKey(const std::array<uint8_t, 5>& address);
+    bool setRxPayloadLength(const uint8_t bytes);
 
    private:
     static constexpr const char* TAG = "NRF24";
-
-    // Mode mode_ = Mode::Undefined;
 
     void beginTransaction() const;
     void endTransaction() const;
@@ -154,4 +160,6 @@ class Nrf24Radio
 
     GPIO_TypeDef* cePort_;
     uint16_t cePin_;
+
+    Direction direction_;
 };
