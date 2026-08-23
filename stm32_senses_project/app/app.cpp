@@ -37,38 +37,8 @@ extern "C" void app_main()
 
     nrf.setAirDataRate(DataRate::Mbps1);
     nrf.setChannel(SHARED_CHANNEL);
-    // План подальшої роботи над Nrf24Radio:
-    //
-    // 1) Налаштувати спільну 5-байтну адресу для обох плат
-    //    (writeMultiByteRegister вже готовий, лишилось застосувати):
-    //    - На пульті (TX): записати TX_ADDR
-    //    - На senses-платі (RX): записати RX_ADDR_P0 = та сама адреса
-    //
     nrf.setRxRfFilterKey(SHARED_RF_FILTER_KEY);
-
-    // 2) Налаштувати довжину очікуваного payload на RX-стороні
-    //    (RX_PW_P0 — скільки байт очікувати на pipe 0,
-    //    обов'язково без dynamic payload length)
-    //
     nrf.setRxPayloadLength(TEST_REG_RX_PW_P0_VALUE);
-
-    // 3) Написати transmit() на боці TX (пульт):
-    //    - команда W_TX_PAYLOAD (завантажити payload у TX FIFO)
-    //    - CE вже піднятий (Standby-II), чіп сам почне передачу
-    //    - чекати біт TX_DS у STATUS (підтвердження "пакет пішов")
-    //
-    // 4) Перевірити transmit() на реальному залізі
-    //    (навіть без приймача поруч — TX_DS має спрацювати,
-    //    бо auto-ACK вимкнено)
-    //
-    // 5) Написати receive() на боці RX (senses-плата):
-    //    - перевірити RX_DR у STATUS чи RX_EMPTY у FIFO_STATUS
-    //    - команда R_RX_PAYLOAD (вичитати дані з RX FIFO)
-    //
-    // 6) Зібрати обидві плати разом:
-    //    пульт (TX) шле щось просте раз на секунду,
-    //    senses-плата (RX) приймає і логує — перший реальний
-    //    радіозв'язок між двома фізичними пристроями
 
     LOG_INFO("NRF", "State before enableRx() = %d", static_cast<int>(nrf.getCurrentState()));
     nrf.enableRx();
@@ -78,6 +48,12 @@ extern "C" void app_main()
 
     while (true)
     {
+        uint8_t buffer[4];
+        if (nrf.receive(buffer, sizeof(buffer)))
+        {
+            LOG_INFO("NRF", "Received: %d %d %d %d", buffer[0], buffer[1], buffer[2], buffer[3]);
+        }
+
         HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
         osDelay(250);
     }

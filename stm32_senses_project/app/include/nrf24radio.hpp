@@ -41,7 +41,12 @@ constexpr uint8_t RF_SETUP_RF_DR_LOW_BIT = 1 << 5;
 constexpr uint8_t RF_SETUP_PLL_LOCK_BIT = 1 << 4;
 constexpr uint8_t RF_SETUP_RF_DR_HIGH_BIT = 1 << 3;
 
-constexpr uint8_t REG_STATUS = 0x07;      // Status Register
+constexpr uint8_t REG_STATUS = 0x07;  // Status Register
+constexpr uint8_t STATUS_RX_DR_BIT = 1 << 6;
+constexpr uint8_t STATUS_TX_DS_BIT = 1 << 5;
+constexpr uint8_t STATUS_MAX_RT_BIT = 1 << 4;
+constexpr uint8_t STATUS_TX_FULL_BIT = 1 << 0;
+
 constexpr uint8_t REG_OBSERVE_TX = 0x08;  // Transmit observe register
 constexpr uint8_t REG_RPD = 0x09;         // Received Power Detector
 constexpr uint8_t REG_RX_ADDR_P0 = 0x0A;  // Receive address data pipe 0 (5 байт)
@@ -157,6 +162,7 @@ class Nrf24Radio
     bool setRxRfFilterKey(const std::array<uint8_t, 5>& address);
     bool setRxPayloadLength(const uint8_t bytes);
     bool transmit(const uint8_t* data, uint8_t length);
+    bool receive(uint8_t* buffer, uint8_t length);
     bool setAirDataRate(DataRate rate);
     bool setChannel(uint8_t channel);
 

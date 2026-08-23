@@ -339,6 +339,9 @@ void Nrf24Radio::readRxPayload(uint8_t* buffer, size_t length)
     }
 }
 
+// Відправляє один payload (1-32 байти). CE вже піднятий (enableTx()),
+// тому чіп сам почне передачу щойно payload потрапить у TX FIFO
+// (Standby-II → TX mode, datasheet §6.1.5).
 bool Nrf24Radio::transmit(const uint8_t* data, uint8_t length)
 {
     if (direction_ != Direction::Tx && direction_ != Direction::HalfDuplex)
@@ -347,7 +350,68 @@ bool Nrf24Radio::transmit(const uint8_t* data, uint8_t length)
         return false;
     }
 
-    // ...
+    if (!isCeHigh())
+    {
+        LOG_ERROR(TAG, "transmit() called, but CE is not high — call enableTx() first");
+        return false;
+    }
+
+    // Завантажуємо payload у TX FIFO (W_TX_PAYLOAD) по SPI.
+    writeTxPayload(data, length);
+
+    // Чекаємо підтвердження реальної радіопередачі.
+    // Активний поллінг - щоразу заново читаємо TX_DS біт через SPI
+    // Register Map, Table 28: "Asserted when packet transmitted on TX"
+    constexpr uint32_t TIMEOUT_MS = 100;
+
+    uint32_t elapsed = 0;
+    while (elapsed < TIMEOUT_MS)
+    {
+        uint8_t status = readRegister(REG_STATUS);
+        if ((status & STATUS_TX_DS_BIT) != 0)
+        {
+            // "Write 1 to clear bit" (Table 28) — обов'язково скидаємо
+            // прапорець. Якщо цього не зробити, наступний виклик
+            // transmit() одразу побачить ЗАСТАРІЛИЙ TX_DS від цієї
+            // передачі й помилково поверне true, навіть не почавши
+            // нову передачу.
+            writeRegister(REG_STATUS, STATUS_TX_DS_BIT);
+            return true;
+        }
+        osDelay(1);
+        elapsed++;
+    }
+
+    LOG_ERROR(TAG, "transmit() timed out waiting for TX_DS");
+    return false;
+}
+
+bool Nrf24Radio::receive(uint8_t* buffer, uint8_t length)
+{
+    if (direction_ != Direction::Rx && direction_ != Direction::HalfDuplex)
+    {
+        LOG_ERROR(TAG, "receive() called, but radio is not in RX mode");
+        return false;
+    }
+
+    if (!isCeHigh())
+    {
+        LOG_ERROR(TAG, "receive() called, but CE is not high — call enableRx() first");
+        return false;
+    }
+
+    uint8_t status = readRegister(REG_STATUS);
+    if ((status & STATUS_RX_DR_BIT) == 0)
+    {
+        return false;  // немає нових даних
+    }
+
+    readRxPayload(buffer, length);
+
+    // "Write 1 to clear bit" (Table 28)
+    writeRegister(REG_STATUS, STATUS_RX_DR_BIT);
+
+    return true;
 }
 
 // Встановлює air data rate (RF_SETUP, біти RF_DR_LOW/RF_DR_HIGH).
