@@ -111,16 +111,6 @@ void Nrf24Radio::ceLow()
     HAL_GPIO_WritePin(cePort_, cePin_, GPIO_PIN_RESET);
 }
 
-// bool Nrf24Radio::isTxEnabled() const
-// {
-//     return mode_ == Mode::Tx;
-// }
-
-// bool Nrf24Radio::isRxEnabled() const
-// {
-//     return mode_ == Mode::Rx;
-// }
-
 bool Nrf24Radio::isTxEnabled() const
 {
     RadioState state = getCurrentState();

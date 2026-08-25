@@ -24,30 +24,52 @@ constexpr uint8_t W_TX_PAYLOAD_NO_ACK = 0xB0;  // 1011 0000 — TX payload бе�
 constexpr uint8_t NOP = 0xFF;  // 1111 1111 — No Operation (можна використати для читання STATUS)
 
 // Адреси регістрів nRF24 (Table 28, datasheet, "Register Map")
-constexpr uint8_t REG_CONFIG = 0x00;       // Configuration Register
-constexpr uint8_t REG_EN_AA = 0x01;        // Enable Auto Acknowledgment
-constexpr uint8_t REG_EN_RXADDR = 0x02;    // Enabled RX Addresses
-constexpr uint8_t REG_SETUP_AW = 0x03;     // Setup of Address Widths
-constexpr uint8_t REG_SETUP_RETR = 0x04;   // Setup of Automatic Retransmission
-constexpr uint8_t REG_RF_CH = 0x05;        // RF Channel
-constexpr uint8_t REG_RF_SETUP = 0x06;     // RF Setup Register
-constexpr uint8_t REG_STATUS = 0x07;       // Status Register
-constexpr uint8_t REG_OBSERVE_TX = 0x08;   // Transmit observe register
-constexpr uint8_t REG_RPD = 0x09;          // Received Power Detector
-constexpr uint8_t REG_RX_ADDR_P0 = 0x0A;   // Receive address data pipe 0 (5 байт)
-constexpr uint8_t REG_RX_ADDR_P1 = 0x0B;   // Receive address data pipe 1 (5 байт)
-constexpr uint8_t REG_RX_ADDR_P2 = 0x0C;   // Receive address data pipe 2 (тільки LSB)
-constexpr uint8_t REG_RX_ADDR_P3 = 0x0D;   // Receive address data pipe 3 (тільки LSB)
-constexpr uint8_t REG_RX_ADDR_P4 = 0x0E;   // Receive address data pipe 4 (тільки LSB)
-constexpr uint8_t REG_RX_ADDR_P5 = 0x0F;   // Receive address data pipe 5 (тільки LSB)
-constexpr uint8_t REG_TX_ADDR = 0x10;      // Transmit address (5 байт)
-constexpr uint8_t REG_RX_PW_P0 = 0x11;     // Number of bytes in RX payload, pipe 0
-constexpr uint8_t REG_RX_PW_P1 = 0x12;     // Number of bytes in RX payload, pipe 1
-constexpr uint8_t REG_RX_PW_P2 = 0x13;     // Number of bytes in RX payload, pipe 2
-constexpr uint8_t REG_RX_PW_P3 = 0x14;     // Number of bytes in RX payload, pipe 3
-constexpr uint8_t REG_RX_PW_P4 = 0x15;     // Number of bytes in RX payload, pipe 4
-constexpr uint8_t REG_RX_PW_P5 = 0x16;     // Number of bytes in RX payload, pipe 5
+constexpr uint8_t REG_CONFIG = 0x00;  // Configuration Register
+constexpr uint8_t CONFIG_EN_CRC_BIT = 1 << 3;
+constexpr uint8_t CONFIG_PWR_UP_BIT = 1 << 1;
+constexpr uint8_t CONFIG_PRIM_RX_BIT = 1 << 0;
+
+constexpr uint8_t REG_EN_AA = 0x01;       // Enable Auto Acknowledgment
+constexpr uint8_t REG_EN_RXADDR = 0x02;   // Enabled RX Addresses
+constexpr uint8_t REG_SETUP_AW = 0x03;    // Setup of Address Widths
+constexpr uint8_t REG_SETUP_RETR = 0x04;  // Setup of Automatic Retransmission
+constexpr uint8_t REG_RF_CH = 0x05;       // RF Channel
+
+constexpr uint8_t REG_RF_SETUP = 0x06;  // RF Setup Register
+constexpr uint8_t RF_SETUP_CONT_WAVE_BIT = 1 << 7;
+constexpr uint8_t RF_SETUP_RF_DR_LOW_BIT = 1 << 5;
+constexpr uint8_t RF_SETUP_PLL_LOCK_BIT = 1 << 4;
+constexpr uint8_t RF_SETUP_RF_DR_HIGH_BIT = 1 << 3;
+
+constexpr uint8_t REG_STATUS = 0x07;  // Status Register
+constexpr uint8_t STATUS_RX_DR_BIT = 1 << 6;
+constexpr uint8_t STATUS_TX_DS_BIT = 1 << 5;
+constexpr uint8_t STATUS_MAX_RT_BIT = 1 << 4;
+constexpr uint8_t STATUS_TX_FULL_BIT = 1 << 0;
+
+constexpr uint8_t REG_OBSERVE_TX = 0x08;  // Transmit observe register
+constexpr uint8_t REG_RPD = 0x09;         // Received Power Detector
+constexpr uint8_t REG_RX_ADDR_P0 = 0x0A;  // Receive address data pipe 0 (5 байт)
+constexpr uint8_t REG_RX_ADDR_P1 = 0x0B;  // Receive address data pipe 1 (5 байт)
+constexpr uint8_t REG_RX_ADDR_P2 = 0x0C;  // Receive address data pipe 2 (тільки LSB)
+constexpr uint8_t REG_RX_ADDR_P3 = 0x0D;  // Receive address data pipe 3 (тільки LSB)
+constexpr uint8_t REG_RX_ADDR_P4 = 0x0E;  // Receive address data pipe 4 (тільки LSB)
+constexpr uint8_t REG_RX_ADDR_P5 = 0x0F;  // Receive address data pipe 5 (тільки LSB)
+constexpr uint8_t REG_TX_ADDR = 0x10;     // Transmit address (5 байт)
+constexpr uint8_t REG_RX_PW_P0 = 0x11;    // Number of bytes in RX payload, pipe 0
+constexpr uint8_t REG_RX_PW_P1 = 0x12;    // Number of bytes in RX payload, pipe 1
+constexpr uint8_t REG_RX_PW_P2 = 0x13;    // Number of bytes in RX payload, pipe 2
+constexpr uint8_t REG_RX_PW_P3 = 0x14;    // Number of bytes in RX payload, pipe 3
+constexpr uint8_t REG_RX_PW_P4 = 0x15;    // Number of bytes in RX payload, pipe 4
+constexpr uint8_t REG_RX_PW_P5 = 0x16;    // Number of bytes in RX payload, pipe 5
+
 constexpr uint8_t REG_FIFO_STATUS = 0x17;  // FIFO Status Register
+constexpr uint8_t FIFO_STATUS_TX_REUSE_BIT = 1 << 6;
+constexpr uint8_t FIFO_STATUS_TX_FULL_BIT = 1 << 5;
+constexpr uint8_t FIFO_STATUS_TX_EMPTY_BIT = 1 << 4;
+constexpr uint8_t FIFO_STATUS_RX_FULL_BIT = 1 << 1;
+constexpr uint8_t FIFO_STATUS_RX_EMPTY_BIT = 1 << 0;
+
 // 0x18-0x1B — Reserved for test purposes, altering them makes the chip malfunction
 constexpr uint8_t REG_DYNPD = 0x1C;    // Enable dynamic payload length
 constexpr uint8_t REG_FEATURE = 0x1D;  // Feature Register
@@ -85,25 +107,75 @@ constexpr uint8_t RESET_FIFO_STATUS = 0b00010001;  // TX_EMPTY=1, RX_EMPTY=1
 constexpr uint8_t RESET_DYNPD = 0b00000000;  // dynamic payload вимкнено на всіх pipes
 constexpr uint8_t RESET_FEATURE = 0b00000000;  // усі додаткові фічі вимкнені
 
+enum class DataRate
+{
+    Kbps250,
+    Mbps1,
+    Mbps2,
+};
+
+enum class Direction
+{
+    Tx,
+    Rx,
+    HalfDuplex,
+};
+
+enum class RadioState
+{
+    Unknown,
+    StandbyI,
+    StandbyII,
+    TxMode,
+    RxMode,
+    PowerDown
+};
+
 class Nrf24Radio
 {
    public:
     bool init();
 
-    uint8_t readRegister(uint8_t reg);
-    uint8_t writeRegister(uint8_t reg, uint8_t value);
+    uint8_t readRegister(uint8_t reg) const;
+    uint8_t writeRegister(uint8_t reg, uint8_t value) const;
 
     Nrf24Radio(SPI_HandleTypeDef* hspi, GPIO_TypeDef* csnPort, uint16_t csnPin,
-               GPIO_TypeDef* cePort, uint16_t cePin)
-        : hspi_(hspi), csnPort_(csnPort), csnPin_(csnPin), cePort_(cePort), cePin_(cePin)
+               GPIO_TypeDef* cePort, uint16_t cePin, Direction direction)
+        : hspi_(hspi),
+          csnPort_(csnPort),
+          csnPin_(csnPin),
+          cePort_(cePort),
+          cePin_(cePin),
+          direction_(direction)
     {
     }
+
+    bool enableTx();
+    bool enableRx();
+
+    bool isTxEnabled() const;
+    bool isRxEnabled() const;
+    bool isTxFifoEmpty() const;
+    bool isCeHigh() const;
+    RadioState getCurrentState() const;
+    bool setTxRfFilterKey(const std::array<uint8_t, 5>& address);
+    bool setRxRfFilterKey(const std::array<uint8_t, 5>& address);
+    bool setRxPayloadLength(const uint8_t bytes);
+    bool transmit(const uint8_t* data, uint8_t length);
+    bool receive(uint8_t* buffer, uint8_t length);
+    bool setAirDataRate(DataRate rate);
+    bool setChannel(uint8_t channel);
 
    private:
     static constexpr const char* TAG = "NRF24";
 
-    void beginTransaction();
-    void endTransaction();
+    void beginTransaction() const;
+    void endTransaction() const;
+    void ceHigh();
+    void ceLow();
+    uint8_t writeMultiByteRegister(uint8_t reg, const uint8_t* data, size_t length);
+    uint8_t writeTxPayload(const uint8_t* data, size_t length);
+    void readRxPayload(uint8_t* buffer, size_t length);
 
     SPI_HandleTypeDef* hspi_;
 
@@ -112,4 +184,8 @@ class Nrf24Radio
 
     GPIO_TypeDef* cePort_;
     uint16_t cePin_;
+
+    Direction direction_;
+    // By default: [RF_DR_LOW, RF_DR_HIGH] = [0, 1] = '01' = 2Mbps
+    DataRate dataRate_ = DataRate::Mbps2;
 };
