@@ -25,11 +25,18 @@ extern "C" void app_main()
 {
     LOG_INFO("APP", "Started!");
 
+    HAL_SD_CardStateTypeDef cardState = HAL_SD_GetCardState(&hsd);
+    LOG_INFO("SD", "HAL_SD_GetCardState = %d (expect HAL_SD_CARD_TRANSFER = 4)", cardState);
+
     GPIO_PinState cardDetect = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8);
-    LOG_INFO("SD", "PA8 (card detect) = %d (0=inserted, 1=empty, based on our schema)", cardDetect);
+    LOG_INFO("SD", "PA8 (card detect) = %d (1=inserted, 0=empty)", cardDetect);
 
     HAL_StatusTypeDef sdInitStatus = HAL_SD_Init(&hsd);
     LOG_INFO("SD", "HAL_SD_Init status=%d, ErrorCode=0x%08lX", sdInitStatus, hsd.ErrorCode);
+
+    BYTE work[_MAX_SS];
+    FRESULT mkfsResult = f_mkfs(SDPath, FM_FAT32, 0, work, sizeof(work));
+    LOG_INFO("SD", "f_mkfs result=%d", mkfsResult);
 
     // FATFS-об'єкт: внутрішня структура бібліотеки, що зберігає
     // стан примонтованої файлової системи. Має existувати весь час,
