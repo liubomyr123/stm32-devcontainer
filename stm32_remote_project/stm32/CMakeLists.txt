@@ -47,6 +47,14 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 target_compile_options(STM32_Drivers PRIVATE -Wno-unused-parameter)
+target_compile_options(FatFs PRIVATE -Wno-unused-parameter)
+
+set_source_files_properties(
+    ${CMAKE_SOURCE_DIR}/FATFS/Target/bsp_driver_sd.c
+    ${CMAKE_SOURCE_DIR}/FATFS/Target/sd_diskio.c
+    ${CMAKE_SOURCE_DIR}/FATFS/Target/user_diskio.c
+    PROPERTIES COMPILE_OPTIONS -Wno-unused-parameter
+)
 
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE

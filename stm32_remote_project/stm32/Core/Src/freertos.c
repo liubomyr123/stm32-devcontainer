@@ -24,7 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "include/logger.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,9 +58,22 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
 /* USER CODE BEGIN 4 */
 void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 {
+  (void)xTask;
    /* Run time stack overflow checking is performed if
    configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
    called if a stack overflow is detected. */
+
+  // Stack overflow виявлено — це критична, непередбачувана помилка.
+  // Продовжувати виконання небезпечно (пам'ять уже могла бути
+  // пошкоджена), тому просто логуємо назву задачі й зупиняємось.
+  LOG_ERROR("RTOS", "Stack overflow in task: %s", (const char*)pcTaskName);
+
+  // Безпечна зупинка — не намагаємось "продовжити", бо стан
+  // системи вже непередбачуваний.
+  __disable_irq();
+  while (1)
+  {
+  }
 }
 /* USER CODE END 4 */
 
