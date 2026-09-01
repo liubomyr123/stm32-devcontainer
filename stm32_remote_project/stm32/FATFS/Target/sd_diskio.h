@@ -24,6 +24,8 @@
 #define __SD_DISKIO_H
 
 /* USER CODE BEGIN firstSection */
+#include "diskio.h"
+#include "ff_gen_drv.h"
 /* can be used to modify / undefine following code or add new definitions */
 /* USER CODE END firstSection */
 
@@ -36,6 +38,15 @@ extern const Diskio_drvTypeDef  SD_Driver;
 
 /* USER CODE BEGIN lastSection */
 /* can be used to modify / undefine previous code or add new definitions */
+DSTATUS SD_initialize(BYTE lun);
+DSTATUS SD_status(BYTE lun);
+DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count);
+#if _USE_WRITE == 1
+DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count);
+#endif
+#if _USE_IOCTL == 1
+DRESULT SD_ioctl(BYTE lun, BYTE cmd, void *buff);
+#endif
 /* USER CODE END lastSection */
 
 #endif /* __SD_DISKIO_H */
