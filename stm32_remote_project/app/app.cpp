@@ -2,6 +2,7 @@
 
 #include "cmsis_os.h"
 #include "fatfs.h"
+#include "include/joystickKY023.hpp"
 #include "include/logger.hpp"
 #include "include/nrf24radio.hpp"
 
@@ -22,23 +23,6 @@ extern SD_HandleTypeDef hsd;
 // constexpr uint8_t SHARED_CHANNEL = 100;
 
 extern ADC_HandleTypeDef hadc1;
-
-uint16_t readAdcChannel(uint32_t channel)
-{
-    ADC_ChannelConfTypeDef config{};
-    config.Channel = channel;
-    config.Rank = 1;
-    config.SamplingTime = ADC_SAMPLETIME_84CYCLES;
-
-    HAL_ADC_ConfigChannel(&hadc1, &config);
-
-    HAL_ADC_Start(&hadc1);
-    HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-    uint16_t value = HAL_ADC_GetValue(&hadc1);
-    HAL_ADC_Stop(&hadc1);
-
-    return value;
-}
 
 extern "C" void app_main()
 {
@@ -97,6 +81,17 @@ extern "C" void app_main()
 
     // uint32_t counter = 0;
 
+    JoystickKY023 joystickControl{&hadc1,         //
+                                  ADC_CHANNEL_0,  //
+                                  ADC_CHANNEL_1,  //
+                                  GPIOC,          //
+                                  GPIO_PIN_1};
+
+    JoystickKY023 joystickCamera{&hadc1,          //
+                                 ADC_CHANNEL_4,   //
+                                 ADC_CHANNEL_10,  //
+                                 GPIOC,           //
+                                 GPIO_PIN_2};
     while (true)
     {
         // uint8_t buffer[4] = {
@@ -114,16 +109,16 @@ extern "C" void app_main()
         // HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
         // osDelay(1000);
 
-        uint16_t joy1X = readAdcChannel(ADC_CHANNEL_0);
-        uint16_t joy1Y = readAdcChannel(ADC_CHANNEL_1);
-        uint16_t joy2X = readAdcChannel(ADC_CHANNEL_4);
-        uint16_t joy2Y = readAdcChannel(ADC_CHANNEL_10);
+        uint16_t joyControlX = joystickControl.readAdcChannelX();
+        uint16_t joyControlY = joystickControl.readAdcChannelY();
+        uint16_t joyCameraX = joystickCamera.readAdcChannelX();
+        uint16_t joyCameraY = joystickCamera.readAdcChannelY();
 
-        GPIO_PinState joy1Sw = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_1);
-        GPIO_PinState joy2Sw = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_2);
+        GPIO_PinState joyControlSw = joystickControl.readSwButton();
+        GPIO_PinState joyCameraSw = joystickCamera.readSwButton();
 
-        LOG_INFO("JOY", "Joy1: X=%u Y=%u SW=%d | Joy2: X=%u Y=%u SW=%d", joy1X, joy1Y, joy1Sw,
-                 joy2X, joy2Y, joy2Sw);
+        LOG_INFO("JOY", "joyControl: X=%u Y=%u SW=%d | joyCamera: X=%u Y=%u SW=%d", joyControlX,
+                 joyControlY, joyControlSw, joyCameraX, joyCameraY, joyCameraSw);
 
         osDelay(250);
     }
