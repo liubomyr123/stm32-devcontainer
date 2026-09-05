@@ -21,6 +21,8 @@ class JoystickKY023
     GPIO_PinState readSwButton();
 
    private:
+    static constexpr const char* TAG = "JOYSTICK";
+
     ADC_HandleTypeDef* hadc_;
 
     uint16_t ADC_CHANNEL_X_;

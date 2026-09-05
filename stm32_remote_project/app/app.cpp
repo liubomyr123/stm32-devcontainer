@@ -5,6 +5,7 @@
 #include "include/joystickKY023.hpp"
 #include "include/logger.hpp"
 #include "include/nrf24radio.hpp"
+#include "include/sdcard.hpp"
 
 extern SPI_HandleTypeDef hspi1;
 extern SD_HandleTypeDef hsd;
@@ -28,18 +29,12 @@ extern "C" void app_main()
 {
     LOG_INFO("APP", "Started!");
 
-    BYTE work[_MAX_SS];
-    FRESULT mkfsResult = f_mkfs(SDPath, FM_FAT32, 0, work, sizeof(work));
-    LOG_INFO("SD", "f_mkfs result=%d", mkfsResult);
+    SdCard card = {};
 
-    static FATFS fs;
-    FRESULT mountResult = f_mount(&fs, SDPath, 1);
-    if (mountResult != FR_OK)
+    if (!card.init())
     {
-        LOG_ERROR("SD", "f_mount failed: %d", mountResult);
         vTaskDelete(nullptr);
     }
-    LOG_INFO("SD", "Mounted OK");
 
     // f_open з FA_WRITE|FA_CREATE_ALWAYS: якщо файла нема — створює,
     // якщо є — перезаписує з нуля (для першого тесту це найпростіше).
