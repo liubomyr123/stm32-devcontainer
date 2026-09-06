@@ -36,23 +36,8 @@ extern "C" void app_main()
         vTaskDelete(nullptr);
     }
 
-    // f_open з FA_WRITE|FA_CREATE_ALWAYS: якщо файла нема — створює,
-    // якщо є — перезаписує з нуля (для першого тесту це найпростіше).
-    FIL file;
-    FRESULT openResult = f_open(&file, "test.txt", FA_WRITE | FA_CREATE_ALWAYS);
-    if (openResult != FR_OK)
-    {
-        LOG_ERROR("SD", "f_open failed: %d", openResult);
-        vTaskDelete(nullptr);
-    }
-
     const char message[] = "Hello from STM32!\r\n";
-    UINT bytesWritten = 0;
-    FRESULT writeResult = f_write(&file, message, sizeof(message) - 1, &bytesWritten);
-    LOG_INFO("SD", "f_write result=%d, bytesWritten=%u", writeResult, bytesWritten);
-
-    f_close(&file);
-    LOG_INFO("SD", "File closed, done!");
+    card.updateCurrentLog(message);
 
     // Nrf24Radio nrf{&hspi1,                     //
     //                NRF_CSN_PORT, NRF_CSN_PIN,  //
