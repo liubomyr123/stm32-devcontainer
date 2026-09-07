@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 
 #include "cmsis_os.h"
 #include "include/logger.hpp"
@@ -16,8 +17,10 @@ class JoystickKY023
     {
     }
 
-    uint16_t readAdcChannelX();
-    uint16_t readAdcChannelY();
+    bool readAdcChannelXRaw(uint16_t& out);
+    bool readAdcChannelYRaw(uint16_t& out);
+    bool readAdcChannelXFiltered(uint16_t& out);
+    bool readAdcChannelYFiltered(uint16_t& out);
     GPIO_PinState readSwButton();
 
    private:
@@ -31,5 +34,9 @@ class JoystickKY023
     GPIO_TypeDef* GPIOx_SW_;
     uint16_t GPIO_Pin_SW_;
 
-    uint16_t readAdcChannel(uint32_t channel);
+    bool readAdcChannelRaw(uint32_t channel, uint16_t& out);
+    bool readAdcChannelFiltered(uint32_t channel, uint16_t& out);
+
+    // uint16_t previousX_ = 2048;
+    // uint16_t previousY_ = 2048;
 };

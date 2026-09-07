@@ -89,10 +89,14 @@ extern "C" void app_main()
         // HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
         // osDelay(1000);
 
-        uint16_t joyControlX = joystickControl.readAdcChannelX();
-        uint16_t joyControlY = joystickControl.readAdcChannelY();
-        uint16_t joyCameraX = joystickCamera.readAdcChannelX();
-        uint16_t joyCameraY = joystickCamera.readAdcChannelY();
+        uint16_t joyControlX = 0;
+        joystickControl.readAdcChannelXFiltered(joyControlX);
+        uint16_t joyControlY = 0;
+        joystickControl.readAdcChannelYFiltered(joyControlY);
+        uint16_t joyCameraX = 0;
+        joystickCamera.readAdcChannelXFiltered(joyCameraX);
+        uint16_t joyCameraY = 0;
+        joystickCamera.readAdcChannelYFiltered(joyCameraY);
 
         GPIO_PinState joyControlSw = joystickControl.readSwButton();
         GPIO_PinState joyCameraSw = joystickCamera.readSwButton();
