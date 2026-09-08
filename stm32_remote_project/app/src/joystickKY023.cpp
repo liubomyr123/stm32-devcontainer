@@ -2,14 +2,30 @@
 
 #include <cstdint>
 
-bool JoystickKY023::readAdcChannelYFiltered(uint16_t& out)
-{
-    return readAdcChannelFiltered(ADC_CHANNEL_Y_, out);
-}
-
 bool JoystickKY023::readAdcChannelXFiltered(uint16_t& out)
 {
-    return readAdcChannelFiltered(ADC_CHANNEL_X_, out);
+    uint16_t medianValue = 0;
+    if (!readAdcChannelFiltered(ADC_CHANNEL_X_, medianValue))
+    {
+        return false;
+    }
+
+    auto maxStep = static_cast<uint16_t>(static_cast<float>(ADC_MAX_VALUE_) * MAX_STEP_PERCENT);
+    out = applyRateLimit(medianValue, previousX_, maxStep);
+    return true;
+}
+
+bool JoystickKY023::readAdcChannelYFiltered(uint16_t& out)
+{
+    uint16_t medianValue = 0;
+    if (!readAdcChannelFiltered(ADC_CHANNEL_Y_, medianValue))
+    {
+        return false;
+    }
+
+    auto maxStep = static_cast<uint16_t>(static_cast<float>(ADC_MAX_VALUE_) * MAX_STEP_PERCENT);
+    out = applyRateLimit(medianValue, previousY_, maxStep);
+    return true;
 }
 
 bool JoystickKY023::readAdcChannelFiltered(uint32_t channel, uint16_t& out)
@@ -96,4 +112,58 @@ bool JoystickKY023::readAdcChannelRaw(uint32_t channel, uint16_t& out)
 GPIO_PinState JoystickKY023::readSwButton()
 {
     return HAL_GPIO_ReadPin(GPIOx_SW_, GPIO_Pin_SW_);
+}
+
+uint16_t JoystickKY023::getAdcMaxValue(ADC_HandleTypeDef* hadc)
+{
+    // RM0402 §13.12.2, ADC control register 1 (ADC_CR1)
+    // Bits 25:24 RES[1:0]: Resolution
+    // "These bits are written by software to select the resolution of the conversion."
+    // 00: 12-bit (minimum 15 ADCCLK cycles)
+    // 01: 10-bit (minimum 13 ADCCLK cycles)
+    // 10: 8-bit (minimum 11 ADCCLK cycles)
+    // 11: 6-bit (minimum 9 ADCCLK cycles)
+    uint32_t resBits = (hadc->Instance->CR1 & ADC_CR1_RES) >> ADC_CR1_RES_Pos;
+
+    uint8_t bitDepth;
+    switch (resBits)
+    {
+        case 0:
+            bitDepth = 12;
+            break;
+        case 1:
+            bitDepth = 10;
+            break;
+        case 2:
+            bitDepth = 8;
+            break;
+        case 3:
+            bitDepth = 6;
+            break;
+        default:
+            bitDepth = 12;
+            break;
+    }
+
+    return static_cast<uint16_t>((1UL << bitDepth) - 1);
+}
+
+uint16_t JoystickKY023::applyRateLimit(uint16_t newValue, uint16_t& previousValue, uint16_t maxStep)
+{
+    int32_t diff = static_cast<int32_t>(newValue) - static_cast<int32_t>(previousValue);
+
+    if (diff > static_cast<int32_t>(maxStep))
+    {
+        previousValue += maxStep;
+    }
+    else if (diff < -static_cast<int32_t>(maxStep))
+    {
+        previousValue -= maxStep;
+    }
+    else
+    {
+        previousValue = newValue;
+    }
+
+    return previousValue;
 }
