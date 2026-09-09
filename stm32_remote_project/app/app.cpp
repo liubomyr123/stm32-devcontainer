@@ -100,20 +100,20 @@ extern "C" void app_main()
         // HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
         // osDelay(1000);
 
-        uint16_t joyControlX = 0;
-        joystickControl.readAdcChannelXFiltered(joyControlX);
-        uint16_t joyControlY = 0;
-        joystickControl.readAdcChannelYFiltered(joyControlY);
-        uint16_t joyCameraX = 0;
-        joystickCamera.readAdcChannelXFiltered(joyCameraX);
-        uint16_t joyCameraY = 0;
-        joystickCamera.readAdcChannelYFiltered(joyCameraY);
+        int16_t joyControlX = 0;
+        joystickControl.readAdcChannelXPercentage(joyControlX);
+        int16_t joyControlY = 0;
+        joystickControl.readAdcChannelYPercentage(joyControlY);
+        int16_t joyCameraX = 0;
+        joystickCamera.readAdcChannelXPercentage(joyCameraX);
+        int16_t joyCameraY = 0;
+        joystickCamera.readAdcChannelYPercentage(joyCameraY);
 
         GPIO_PinState joyControlSw = joystickControl.readSwButton();
         GPIO_PinState joyCameraSw = joystickCamera.readSwButton();
 
-        LOG_INFO("JOY", "joyControl: X=%u Y=%u SW=%d | joyCamera: X=%u Y=%u SW=%d", joyControlX,
-                 joyControlY, joyControlSw, joyCameraX, joyCameraY, joyCameraSw);
+        LOG_INFO("JOY", "joyControl: X=[%d%%] Y=[%d%%] SW=%d | joyCamera: X=[%d%%] Y=[%d%%] SW=%d",
+                 joyControlX, joyControlY, joyControlSw, joyCameraX, joyCameraY, joyCameraSw);
 
         osDelay(250);
     }

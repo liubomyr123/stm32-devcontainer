@@ -196,3 +196,67 @@ uint16_t JoystickKY023::applyRateLimit(uint16_t newValue, uint16_t& previousValu
 
     return previousValue;
 }
+
+bool JoystickKY023::applyChannelRateLimit(uint32_t channel, uint16_t newValue, uint16_t& out)
+{
+    if (channel == ADC_CHANNEL_X_)
+    {
+        out = applyRateLimit(newValue, previousX_);
+        return true;
+    }
+    if (channel == ADC_CHANNEL_Y_)
+    {
+        out = applyRateLimit(newValue, previousY_);
+        return true;
+    }
+
+    LOG_ERROR(TAG, "applyChannelRateLimit: unknown channel %lu", channel);
+    return false;
+}
+
+bool JoystickKY023::readAdcChannelPercentage(uint32_t channel, int16_t& out)
+{
+    uint16_t medianValue = 0;
+    if (!readAdcChannelFiltered(channel, medianValue))
+    {
+        return false;
+    }
+
+    uint16_t smoothedValue = 0;
+    if (!applyChannelRateLimit(channel, medianValue, smoothedValue))
+    {
+        return false;
+    }
+
+    int32_t percent = (static_cast<int32_t>(smoothedValue) * 100) / ADC_MAX_VALUE_;
+    auto result = static_cast<int16_t>((percent - 50) * 2);
+
+    constexpr int16_t DEAD_ZONE = 5;
+    if (result > -DEAD_ZONE && result < DEAD_ZONE)
+    {
+        result = 0;
+    }
+
+    constexpr int16_t EDGE_ZONE = 3;
+    if (result > (100 - EDGE_ZONE))
+    {
+        result = 100;
+    }
+    else if (result < (-100 + EDGE_ZONE))
+    {
+        result = -100;
+    }
+
+    out = result;
+    return true;
+}
+
+bool JoystickKY023::readAdcChannelXPercentage(int16_t& out)
+{
+    return readAdcChannelPercentage(ADC_CHANNEL_X_, out);
+}
+
+bool JoystickKY023::readAdcChannelYPercentage(int16_t& out)
+{
+    return readAdcChannelPercentage(ADC_CHANNEL_Y_, out);
+}

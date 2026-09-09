@@ -23,6 +23,8 @@ class JoystickKY023
     bool readAdcChannelYRaw(uint16_t& out);
     bool readAdcChannelXFiltered(uint16_t& out);
     bool readAdcChannelYFiltered(uint16_t& out);
+    bool readAdcChannelXPercentage(int16_t& out);
+    bool readAdcChannelYPercentage(int16_t& out);
     GPIO_PinState readSwButton();
     uint16_t getAdcMaxValue(ADC_HandleTypeDef* hadc);
 
@@ -40,7 +42,9 @@ class JoystickKY023
 
     bool readAdcChannelRaw(uint32_t channel, uint16_t& out);
     bool readAdcChannelFiltered(uint32_t channel, uint16_t& out);
+    bool readAdcChannelPercentage(uint32_t channel, int16_t& out);
     uint16_t applyRateLimit(uint16_t newValue, uint16_t& previousValue) const;
+    bool applyChannelRateLimit(uint32_t channel, uint16_t newValue, uint16_t& out);
 
     uint16_t ADC_MAX_VALUE_{0};
     uint16_t previousX_{0};
