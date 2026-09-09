@@ -1,6 +1,37 @@
 #include "joystickKY023.hpp"
 
-#include <cstdint>
+bool JoystickKY023::init()
+{
+    if (hadc_ == nullptr)
+    {
+        LOG_ERROR(TAG, "hadc must be initialised");
+        return false;
+    }
+    if (GPIOx_SW_ == nullptr)
+    {
+        LOG_ERROR(TAG, "GPIOx_SW_ must be initialised");
+        return false;
+    }
+    if (ADC_CHANNEL_X_ == ADC_CHANNEL_Y_)
+    {
+        LOG_ERROR(TAG, "ADC_CHANNEL_X_ and ADC_CHANNEL_Y_ must be different");
+        return false;
+    }
+    if (GPIO_Pin_SW_ == 0)
+    {
+        LOG_ERROR(TAG, "GPIO_Pin_SW_ must be initialised");
+        return false;
+    }
+
+    ADC_MAX_VALUE_ = getAdcMaxValue(hadc_);
+
+    previousX_ = ADC_MAX_VALUE_ / 2;
+    previousY_ = ADC_MAX_VALUE_ / 2;
+
+    maxStep_ = static_cast<uint16_t>(static_cast<float>(ADC_MAX_VALUE_) * MAX_STEP_PERCENT);
+
+    return true;
+}
 
 bool JoystickKY023::readAdcChannelXFiltered(uint16_t& out)
 {
@@ -10,8 +41,7 @@ bool JoystickKY023::readAdcChannelXFiltered(uint16_t& out)
         return false;
     }
 
-    auto maxStep = static_cast<uint16_t>(static_cast<float>(ADC_MAX_VALUE_) * MAX_STEP_PERCENT);
-    out = applyRateLimit(medianValue, previousX_, maxStep);
+    out = applyRateLimit(medianValue, previousX_);
     return true;
 }
 
@@ -23,8 +53,7 @@ bool JoystickKY023::readAdcChannelYFiltered(uint16_t& out)
         return false;
     }
 
-    auto maxStep = static_cast<uint16_t>(static_cast<float>(ADC_MAX_VALUE_) * MAX_STEP_PERCENT);
-    out = applyRateLimit(medianValue, previousY_, maxStep);
+    out = applyRateLimit(medianValue, previousY_);
     return true;
 }
 
@@ -148,17 +177,17 @@ uint16_t JoystickKY023::getAdcMaxValue(ADC_HandleTypeDef* hadc)
     return static_cast<uint16_t>((1UL << bitDepth) - 1);
 }
 
-uint16_t JoystickKY023::applyRateLimit(uint16_t newValue, uint16_t& previousValue, uint16_t maxStep)
+uint16_t JoystickKY023::applyRateLimit(uint16_t newValue, uint16_t& previousValue) const
 {
     int32_t diff = static_cast<int32_t>(newValue) - static_cast<int32_t>(previousValue);
 
-    if (diff > static_cast<int32_t>(maxStep))
+    if (diff > static_cast<int32_t>(maxStep_))
     {
-        previousValue += maxStep;
+        previousValue += maxStep_;
     }
-    else if (diff < -static_cast<int32_t>(maxStep))
+    else if (diff < -static_cast<int32_t>(maxStep_))
     {
-        previousValue -= maxStep;
+        previousValue -= maxStep_;
     }
     else
     {

@@ -67,11 +67,22 @@ extern "C" void app_main()
                                   GPIOC,          //
                                   GPIO_PIN_1};
 
+    if (!joystickControl.init())
+    {
+        vTaskDelete(nullptr);
+    }
+
     JoystickKY023 joystickCamera{&hadc1,          //
                                  ADC_CHANNEL_4,   //
                                  ADC_CHANNEL_10,  //
                                  GPIOC,           //
                                  GPIO_PIN_2};
+
+    if (!joystickCamera.init())
+    {
+        vTaskDelete(nullptr);
+    }
+
     while (true)
     {
         // uint8_t buffer[4] = {
