@@ -59,7 +59,8 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 
 /* USER CODE BEGIN Private defines */
-
+#define ADC_SAMPLES_PER_CHANNEL 5
+#define ADC_NUM_CHANNELS 4
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

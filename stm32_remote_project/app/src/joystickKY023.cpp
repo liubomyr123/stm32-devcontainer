@@ -1,10 +1,20 @@
 #include "joystickKY023.hpp"
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+extern volatile uint16_t sharedAdcBuffer[ADC_SAMPLES_PER_CHANNEL][ADC_NUM_CHANNELS];
+
+bool JoystickKY023::dmaStarted_ = false;
+
 bool JoystickKY023::init()
 {
     if (hadc_ == nullptr)
     {
         LOG_ERROR(TAG, "hadc must be initialised");
+        return false;
+    }
+    if (htim_ == nullptr)
+    {
+        LOG_ERROR(TAG, "htim must be initialised");
         return false;
     }
     if (GPIOx_SW_ == nullptr)
@@ -29,6 +39,12 @@ bool JoystickKY023::init()
     previousY_ = ADC_MAX_VALUE_ / 2;
 
     maxStep_ = static_cast<uint16_t>(static_cast<float>(ADC_MAX_VALUE_) * MAX_STEP_PERCENT);
+
+    if (!startAdcSampling())
+    {
+        // NOLINTNEXTLINE(readability-simplify-boolean-expr)
+        return false;
+    }
 
     return true;
 }
@@ -56,26 +72,58 @@ bool JoystickKY023::readAdcChannelYFiltered(uint16_t& out)
     out = applyRateLimit(medianValue, previousY_);
     return true;
 }
+// СТАРИЙ, "ручний" поллінг-підхід — НЕСУМІСНИЙ з поточною DMA-конфігурацією ADC1
+// bool JoystickKY023::readAdcChannelFiltered(uint32_t channel, uint16_t& out)
+// {
+//     constexpr uint8_t SAMPLES = 5;
+//     std::array<uint16_t, SAMPLES> samples = {0};
+
+//     for (size_t i = 0; i < SAMPLES; i++)
+//     {
+//         uint16_t adcValue = 0;
+//         if (!readAdcChannelRaw(channel, adcValue))
+//         {
+//             return false;
+//         }
+//         samples.at(i) = adcValue;
+//         osDelay(1);
+//     }
+
+//     for (size_t i = 0; i < SAMPLES - 1; i++)
+//     {
+//         for (size_t k = 0; k < SAMPLES - 1 - i; k++)
+//         {
+//             if (samples.at(k) > samples.at(k + 1))
+//             {
+//                 uint16_t temp = samples.at(k);
+//                 samples.at(k) = samples.at(k + 1);
+//                 samples.at(k + 1) = temp;
+//             }
+//         }
+//     }
+
+//     out = samples.at(samples.size() / 2);
+//     return true;
+// }
 
 bool JoystickKY023::readAdcChannelFiltered(uint32_t channel, uint16_t& out)
 {
-    constexpr uint8_t SAMPLES = 5;
-    std::array<uint16_t, SAMPLES> samples = {0};
-
-    for (size_t i = 0; i < SAMPLES; i++)
+    int index = getChannelIndex(channel);
+    if (index < 0)
     {
-        uint16_t adcValue = 0;
-        if (!readAdcChannelRaw(channel, adcValue))
-        {
-            return false;
-        }
-        samples.at(i) = adcValue;
-        osDelay(1);
+        return false;
     }
 
-    for (size_t i = 0; i < SAMPLES - 1; i++)
+    std::array<uint16_t, ADC_SAMPLES_PER_CHANNEL> samples{};
+    for (int row = 0; row < ADC_SAMPLES_PER_CHANNEL; row++)
     {
-        for (size_t k = 0; k < SAMPLES - 1 - i; k++)
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+        samples.at(row) = sharedAdcBuffer[row][index];
+    }
+
+    for (size_t i = 0; i < ADC_SAMPLES_PER_CHANNEL - 1; i++)
+    {
+        for (size_t k = 0; k < ADC_SAMPLES_PER_CHANNEL - 1 - i; k++)
         {
             if (samples.at(k) > samples.at(k + 1))
             {
@@ -90,53 +138,53 @@ bool JoystickKY023::readAdcChannelFiltered(uint32_t channel, uint16_t& out)
     return true;
 }
 
-bool JoystickKY023::readAdcChannelXRaw(uint16_t& out)
-{
-    return readAdcChannelRaw(ADC_CHANNEL_X_, out);
-}
+// bool JoystickKY023::readAdcChannelXRaw(uint16_t& out)
+// {
+//     return readAdcChannelRaw(ADC_CHANNEL_X_, out);
+// }
 
-bool JoystickKY023::readAdcChannelYRaw(uint16_t& out)
-{
-    return readAdcChannelRaw(ADC_CHANNEL_Y_, out);
-}
+// bool JoystickKY023::readAdcChannelYRaw(uint16_t& out)
+// {
+//     return readAdcChannelRaw(ADC_CHANNEL_Y_, out);
+// }
 
-bool JoystickKY023::readAdcChannelRaw(uint32_t channel, uint16_t& out)
-{
-    ADC_ChannelConfTypeDef config{};
-    config.Channel = channel;
-    config.Rank = 1;
-    config.SamplingTime = ADC_SAMPLETIME_84CYCLES;
+// bool JoystickKY023::readAdcChannelRaw(uint32_t channel, uint16_t& out)
+// {
+//     ADC_ChannelConfTypeDef config{};
+//     config.Channel = channel;
+//     config.Rank = 1;
+//     config.SamplingTime = ADC_SAMPLETIME_84CYCLES;
 
-    HAL_StatusTypeDef result = HAL_ADC_ConfigChannel(hadc_, &config);
-    if (result != HAL_OK)
-    {
-        LOG_ERROR(TAG, "HAL_ADC_ConfigChannel failed");
-        return false;
-    }
-    result = HAL_ADC_Start(hadc_);
-    if (result != HAL_OK)
-    {
-        LOG_ERROR(TAG, "HAL_ADC_Start failed");
-        return false;
-    }
-    result = HAL_ADC_PollForConversion(hadc_, HAL_MAX_DELAY);
-    if (result != HAL_OK)
-    {
-        LOG_ERROR(TAG, "HAL_ADC_PollForConversion failed");
-        return false;
-    }
+//     HAL_StatusTypeDef result = HAL_ADC_ConfigChannel(hadc_, &config);
+//     if (result != HAL_OK)
+//     {
+//         LOG_ERROR(TAG, "HAL_ADC_ConfigChannel failed");
+//         return false;
+//     }
+//     result = HAL_ADC_Start(hadc_);
+//     if (result != HAL_OK)
+//     {
+//         LOG_ERROR(TAG, "HAL_ADC_Start failed");
+//         return false;
+//     }
+//     result = HAL_ADC_PollForConversion(hadc_, HAL_MAX_DELAY);
+//     if (result != HAL_OK)
+//     {
+//         LOG_ERROR(TAG, "HAL_ADC_PollForConversion failed");
+//         return false;
+//     }
 
-    uint16_t value = HAL_ADC_GetValue(hadc_);
-    result = HAL_ADC_Stop(hadc_);
-    if (result != HAL_OK)
-    {
-        LOG_ERROR(TAG, "HAL_ADC_Stop failed");
-        return false;
-    }
+//     uint16_t value = HAL_ADC_GetValue(hadc_);
+//     result = HAL_ADC_Stop(hadc_);
+//     if (result != HAL_OK)
+//     {
+//         LOG_ERROR(TAG, "HAL_ADC_Stop failed");
+//         return false;
+//     }
 
-    out = value;
-    return true;
-}
+//     out = value;
+//     return true;
+// }
 
 GPIO_PinState JoystickKY023::readSwButton()
 {
@@ -259,4 +307,73 @@ bool JoystickKY023::readAdcChannelXPercentage(int16_t& out)
 bool JoystickKY023::readAdcChannelYPercentage(int16_t& out)
 {
     return readAdcChannelPercentage(ADC_CHANNEL_Y_, out);
+}
+
+int JoystickKY023::getChannelIndex(uint32_t channel) const
+{
+    switch (channel)
+    {
+        case ADC_CHANNEL_0:
+        {
+            return 0;
+        }
+        case ADC_CHANNEL_1:
+        {
+            return 1;
+        }
+        case ADC_CHANNEL_4:
+        {
+            return 2;
+        }
+        case ADC_CHANNEL_10:
+        {
+            return 3;
+        }
+        default:
+        {
+            LOG_ERROR(TAG, "Unknown channel %lu", channel);
+            return -1;
+        }
+    }
+}
+
+bool JoystickKY023::startAdcSampling()
+{
+    if (dmaStarted_)
+    {
+        LOG_INFO(TAG, "DMA sampling already initialised");
+        return true;
+    }
+
+    // Зменшує частоту до 10 тис тіків/сек при оригінальному - 100 міл тіків/сек
+    constexpr uint32_t PRESCALER = 9999;
+    uint32_t period = (ADC_POLL_INTERVAL_MS * 10) - 1;
+
+    __HAL_TIM_SET_PRESCALER(htim_, PRESCALER);
+    __HAL_TIM_SET_AUTORELOAD(htim_, period);
+
+    volatile uint16_t* bufferStart = &sharedAdcBuffer[0][0];
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
+    auto* nonVolatilePointer = const_cast<uint16_t*>(bufferStart);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto* halCompatiblePointer = reinterpret_cast<uint32_t*>(nonVolatilePointer);
+
+    HAL_StatusTypeDef dmaResult = HAL_ADC_Start_DMA(hadc_,                 //
+                                                    halCompatiblePointer,  //
+                                                    ADC_SAMPLES_PER_CHANNEL * ADC_NUM_CHANNELS);
+    if (dmaResult != HAL_OK)
+    {
+        LOG_ERROR(TAG, "HAL_ADC_Start_DMA failed");
+        return false;
+    }
+
+    HAL_StatusTypeDef timResult = HAL_TIM_Base_Start(htim_);
+    if (timResult != HAL_OK)
+    {
+        LOG_ERROR(TAG, "HAL_TIM_Base_Start failed");
+        return false;
+    }
+
+    dmaStarted_ = true;
+    return true;
 }

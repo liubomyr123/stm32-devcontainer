@@ -10,6 +10,9 @@
 extern SPI_HandleTypeDef hspi1;
 extern SD_HandleTypeDef hsd;
 
+extern ADC_HandleTypeDef hadc1;
+extern TIM_HandleTypeDef htim2;
+
 #define NRF_CSN_PORT GPIOB
 #define NRF_CSN_PIN GPIO_PIN_1
 
@@ -22,8 +25,6 @@ extern SD_HandleTypeDef hsd;
 // Робочий канал — подалі від типових WiFi-каналів (1/6/11)
 // F0 = 2400 + 100 = 2500 MHz
 // constexpr uint8_t SHARED_CHANNEL = 100;
-
-extern ADC_HandleTypeDef hadc1;
 
 extern "C" void app_main()
 {
@@ -62,6 +63,7 @@ extern "C" void app_main()
     // uint32_t counter = 0;
 
     JoystickKY023 joystickControl{&hadc1,         //
+                                  &htim2,         //
                                   ADC_CHANNEL_0,  //
                                   ADC_CHANNEL_1,  //
                                   GPIOC,          //
@@ -73,6 +75,7 @@ extern "C" void app_main()
     }
 
     JoystickKY023 joystickCamera{&hadc1,          //
+                                 &htim2,          //
                                  ADC_CHANNEL_4,   //
                                  ADC_CHANNEL_10,  //
                                  GPIOC,           //
