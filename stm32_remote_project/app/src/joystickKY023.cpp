@@ -42,7 +42,7 @@ bool JoystickKY023::init()
 
     if (!startAdcSampling())
     {
-        // NOLINTNEXTLINE(readability-simplify-boolean-expr)
+        LOG_ERROR(TAG, "startAdcSampling failed");
         return false;
     }
 
