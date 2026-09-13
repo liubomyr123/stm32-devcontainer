@@ -165,6 +165,7 @@ class Nrf24Radio
     bool receive(uint8_t* buffer, uint8_t length);
     bool setAirDataRate(DataRate rate);
     bool setChannel(uint8_t channel);
+    void handleInterrupt() const;
 
    private:
     static constexpr const char* TAG = "NRF24";

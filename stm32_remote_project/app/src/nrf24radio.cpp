@@ -23,7 +23,9 @@ bool Nrf24Radio::init()
         return false;
     }
 
-    writeRegister(REG_RF_CH, RESET_RF_CH);  // повертаємо чистий стан
+    writeRegister(REG_RF_CH, RESET_RF_CH);
+
+    writeRegister(REG_STATUS, STATUS_RX_DR_BIT | STATUS_TX_DS_BIT | STATUS_MAX_RT_BIT);
 
     return true;
 }
@@ -349,31 +351,31 @@ bool Nrf24Radio::transmit(const uint8_t* data, uint8_t length)
     // Завантажуємо payload у TX FIFO (W_TX_PAYLOAD) по SPI.
     writeTxPayload(data, length);
 
-    // Чекаємо підтвердження реальної радіопередачі.
-    // Активний поллінг - щоразу заново читаємо TX_DS біт через SPI
-    // Register Map, Table 28: "Asserted when packet transmitted on TX"
-    constexpr uint32_t TIMEOUT_MS = 100;
+    // // Чекаємо підтвердження реальної радіопередачі.
+    // // Активний поллінг - щоразу заново читаємо TX_DS біт через SPI
+    // // Register Map, Table 28: "Asserted when packet transmitted on TX"
+    // constexpr uint32_t TIMEOUT_MS = 100;
 
-    uint32_t elapsed = 0;
-    while (elapsed < TIMEOUT_MS)
-    {
-        uint8_t status = readRegister(REG_STATUS);
-        if ((status & STATUS_TX_DS_BIT) != 0)
-        {
-            // "Write 1 to clear bit" (Table 28) — обов'язково скидаємо
-            // прапорець. Якщо цього не зробити, наступний виклик
-            // transmit() одразу побачить ЗАСТАРІЛИЙ TX_DS від цієї
-            // передачі й помилково поверне true, навіть не почавши
-            // нову передачу.
-            writeRegister(REG_STATUS, STATUS_TX_DS_BIT);
-            return true;
-        }
-        osDelay(1);
-        elapsed++;
-    }
+    // uint32_t elapsed = 0;
+    // while (elapsed < TIMEOUT_MS)
+    // {
+    //     uint8_t status = readRegister(REG_STATUS);
+    //     if ((status & STATUS_TX_DS_BIT) != 0)
+    //     {
+    //         // "Write 1 to clear bit" (Table 28) — обов'язково скидаємо
+    //         // прапорець. Якщо цього не зробити, наступний виклик
+    //         // transmit() одразу побачить ЗАСТАРІЛИЙ TX_DS від цієї
+    //         // передачі й помилково поверне true, навіть не почавши
+    //         // нову передачу.
+    //         writeRegister(REG_STATUS, STATUS_TX_DS_BIT);
+    //         return true;
+    //     }
+    //     osDelay(1);
+    //     elapsed++;
+    // }
 
-    LOG_ERROR(TAG, "transmit() timed out waiting for TX_DS");
-    return false;
+    // LOG_ERROR(TAG, "transmit() timed out waiting for TX_DS");
+    return true;
 }
 
 bool Nrf24Radio::receive(uint8_t* buffer, uint8_t length)
@@ -485,4 +487,26 @@ bool Nrf24Radio::setChannel(uint8_t channel)
 
     writeRegister(REG_RF_CH, channel);
     return true;
+}
+
+void Nrf24Radio::handleInterrupt() const
+{
+    uint8_t status = readRegister(REG_STATUS);
+
+    if ((status & STATUS_RX_DR_BIT) != 0)
+    {
+        LOG_INFO(TAG, "IRQ: RX_DR (received data ready)");
+    }
+    if ((status & STATUS_TX_DS_BIT) != 0)
+    {
+        LOG_INFO(TAG, "IRQ: TX_DS (data sent)");
+    }
+    if ((status & STATUS_MAX_RT_BIT) != 0)
+    {
+        LOG_INFO(TAG, "IRQ: MAX_RT (max retransmits)");
+        uint8_t fifoStatus = readRegister(REG_FIFO_STATUS);
+        LOG_INFO(TAG, "FIFO_STATUS after MAX_RT: 0x%02X", fifoStatus);
+    }
+
+    writeRegister(REG_STATUS, status);
 }
