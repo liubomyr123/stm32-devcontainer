@@ -30,6 +30,13 @@ constexpr uint8_t CONFIG_PWR_UP_BIT = 1 << 1;
 constexpr uint8_t CONFIG_PRIM_RX_BIT = 1 << 0;
 
 constexpr uint8_t REG_EN_AA = 0x01;       // Enable Auto Acknowledgment
+constexpr uint8_t EN_AA_P5_BIT = 1 << 5;  // Auto-Ack for pipe 5
+constexpr uint8_t EN_AA_P4_BIT = 1 << 4;  // Auto-Ack for pipe 4
+constexpr uint8_t EN_AA_P3_BIT = 1 << 3;  // Auto-Ack for pipe 3
+constexpr uint8_t EN_AA_P2_BIT = 1 << 2;  // Auto-Ack for pipe 2
+constexpr uint8_t EN_AA_P1_BIT = 1 << 1;  // Auto-Ack for pipe 1
+constexpr uint8_t EN_AA_P0_BIT = 1 << 0;  // Auto-Ack for pipe 0
+
 constexpr uint8_t REG_EN_RXADDR = 0x02;   // Enabled RX Addresses
 constexpr uint8_t REG_SETUP_AW = 0x03;    // Setup of Address Widths
 constexpr uint8_t REG_SETUP_RETR = 0x04;  // Setup of Automatic Retransmission
@@ -165,7 +172,8 @@ class Nrf24Radio
     bool receive(uint8_t* buffer, uint8_t length);
     bool setAirDataRate(DataRate rate);
     bool setChannel(uint8_t channel);
-    void handleInterrupt() const;
+    uint8_t sendCommand(uint8_t command) const;
+    bool enableAutoAck(uint8_t pipeBit) const;
 
    private:
     static constexpr const char* TAG = "NRF24";
@@ -177,6 +185,8 @@ class Nrf24Radio
     uint8_t writeMultiByteRegister(uint8_t reg, const uint8_t* data, size_t length);
     uint8_t writeTxPayload(const uint8_t* data, size_t length);
     void readRxPayload(uint8_t* buffer, size_t length);
+    bool disableAutoAck(uint8_t pipeBit) const;
+    bool disableAllAutoAck() const;
 
     SPI_HandleTypeDef* hspi_;
 

@@ -7,37 +7,8 @@
 #include "include/nrf24radio.hpp"
 #include "include/sdcard.hpp"
 
-extern SPI_HandleTypeDef hspi1;
-extern SD_HandleTypeDef hsd;
-
 extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim2;
-
-#define NRF_CSN_PORT GPIOB
-#define NRF_CSN_PIN GPIO_PIN_1
-
-#define NRF_CE_PORT GPIOB
-#define NRF_CE_PIN GPIO_PIN_0
-
-#define NRF24_IRQ_PIN GPIO_PIN_10
-#define NRF24_IRQ_FLAG (1UL << 0)
-
-extern osThreadId_t AppTaskHandle;
-
-extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-    if (GPIO_Pin == NRF24_IRQ_PIN)
-    {
-        osThreadFlagsSet(AppTaskHandle, NRF24_IRQ_FLAG);
-    }
-}
-
-// Спільний RF-фільтр-ключ для комунікації пульт↔senses-плата (MVP, один канал)
-constexpr std::array<uint8_t, 5> SHARED_RF_FILTER_KEY = {0xE7, 0xE7, 0xE7, 0xE7, 0xE7};
-
-// Робочий канал — подалі від типових WiFi-каналів (1/6/11)
-// F0 = 2400 + 100 = 2500 MHz
-constexpr uint8_t SHARED_CHANNEL = 100;
 
 extern "C" void app_main()
 {
@@ -52,28 +23,6 @@ extern "C" void app_main()
 
     // const char message[] = "Hello from STM32!\r\n";
     // card.updateCurrentLog(message);
-
-    Nrf24Radio nrf{&hspi1,                     //
-                   NRF_CSN_PORT, NRF_CSN_PIN,  //
-                   NRF_CE_PORT,  NRF_CE_PIN,   //
-                   Direction::Tx};
-
-    if (!nrf.init())
-    {
-        vTaskDelete(nullptr);
-    }
-
-    nrf.setAirDataRate(DataRate::Mbps1);
-    nrf.setChannel(SHARED_CHANNEL);
-    nrf.setTxRfFilterKey(SHARED_RF_FILTER_KEY);
-
-    LOG_INFO("NRF", "State before enableTx() = %d", static_cast<int>(nrf.getCurrentState()));
-    nrf.enableTx();
-    RadioState txState = nrf.getCurrentState();
-    LOG_INFO("NRF", "State after enableTx() = %d (expect StandbyII = %d)",
-             static_cast<int>(txState), static_cast<int>(RadioState::StandbyII));
-
-    uint32_t counter = 0;
 
     JoystickKY023 joystickControl{&hadc1,         //
                                   &htim2,         //
@@ -101,29 +50,6 @@ extern "C" void app_main()
 
     while (true)
     {
-        uint32_t flags = osThreadFlagsWait(NRF24_IRQ_FLAG, osFlagsWaitAny, 0);
-        if (flags == NRF24_IRQ_FLAG)
-        {
-            nrf.handleInterrupt();
-        }
-
-        uint8_t buffer[4] = {
-            static_cast<uint8_t>((counter >> 24) & 0xFF),
-            static_cast<uint8_t>((counter >> 16) & 0xFF),
-            static_cast<uint8_t>((counter >> 8) & 0xFF),
-            static_cast<uint8_t>(counter & 0xFF),
-        };
-
-        bool sent = nrf.transmit(buffer, sizeof(buffer));
-        LOG_INFO("NRF", "Transmit: %s", sent ? "OK" : "FAILED");
-        // uint8_t debugStatus = nrf.readRegister(REG_STATUS);
-        // LOG_INFO("NRF", "Transmit: %s | STATUS=0x%02X", sent ? "OK" : "FAILED", debugStatus);
-
-        // GPIO_PinState irqPinState = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_10);
-        // LOG_INFO("NRF", "PB10 (IRQ pin) raw state: %d", irqPinState);
-
-        counter++;
-
         HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
         osDelay(1000);
 

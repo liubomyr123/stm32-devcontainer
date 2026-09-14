@@ -25,6 +25,8 @@ bool Nrf24Radio::init()
 
     writeRegister(REG_RF_CH, RESET_RF_CH);
 
+    disableAllAutoAck();
+
     writeRegister(REG_STATUS, STATUS_RX_DR_BIT | STATUS_TX_DS_BIT | STATUS_MAX_RT_BIT);
 
     return true;
@@ -75,6 +77,44 @@ uint8_t Nrf24Radio::writeRegister(uint8_t reg, uint8_t value) const
     endTransaction();
 
     return rxBuf[0];
+}
+
+uint8_t Nrf24Radio::sendCommand(uint8_t command) const
+{
+    std::array<uint8_t, 1> txBuf = {command};
+    std::array<uint8_t, 1> rxBuf = {0};
+
+    beginTransaction();
+    HAL_SPI_TransmitReceive(hspi_,
+                            txBuf.data(),  //
+                            rxBuf.data(),  //
+                            txBuf.size(),  //
+                            HAL_MAX_DELAY);
+    endTransaction();
+
+    return rxBuf[0];
+}
+
+bool Nrf24Radio::enableAutoAck(uint8_t pipeBit) const
+{
+    uint8_t enAa = readRegister(REG_EN_AA);
+    enAa |= pipeBit;
+    writeRegister(REG_EN_AA, enAa);
+    return true;
+}
+
+bool Nrf24Radio::disableAutoAck(uint8_t pipeBit) const
+{
+    uint8_t enAa = readRegister(REG_EN_AA);
+    enAa &= ~pipeBit;
+    writeRegister(REG_EN_AA, enAa);
+    return true;
+}
+
+bool Nrf24Radio::disableAllAutoAck() const
+{
+    writeRegister(REG_EN_AA, 0x00);
+    return true;
 }
 
 // Записує багатобайтний R_REGISTER-регістр (5-байтну адресу — RX_ADDR_P0, RX_ADDR_P1 чи TX_ADDR)
@@ -487,26 +527,4 @@ bool Nrf24Radio::setChannel(uint8_t channel)
 
     writeRegister(REG_RF_CH, channel);
     return true;
-}
-
-void Nrf24Radio::handleInterrupt() const
-{
-    uint8_t status = readRegister(REG_STATUS);
-
-    if ((status & STATUS_RX_DR_BIT) != 0)
-    {
-        LOG_INFO(TAG, "IRQ: RX_DR (received data ready)");
-    }
-    if ((status & STATUS_TX_DS_BIT) != 0)
-    {
-        LOG_INFO(TAG, "IRQ: TX_DS (data sent)");
-    }
-    if ((status & STATUS_MAX_RT_BIT) != 0)
-    {
-        LOG_INFO(TAG, "IRQ: MAX_RT (max retransmits)");
-        uint8_t fifoStatus = readRegister(REG_FIFO_STATUS);
-        LOG_INFO(TAG, "FIFO_STATUS after MAX_RT: 0x%02X", fifoStatus);
-    }
-
-    writeRegister(REG_STATUS, status);
 }

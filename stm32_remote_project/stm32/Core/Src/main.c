@@ -64,7 +64,12 @@ const osThreadAttr_t AppTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
-
+osThreadId_t RadioTaskHandle;
+const osThreadAttr_t RadioTask_attributes = {
+  .name = "RadioTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -82,6 +87,7 @@ void StartAppTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 extern void logger_init(void);
+extern void RadioTask(void* argument);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -183,6 +189,7 @@ int main(void)
   /* Create the thread(s) */
   /* creation of AppTask */
   AppTaskHandle = osThreadNew(StartAppTask, NULL, &AppTask_attributes);
+  RadioTaskHandle = osThreadNew(RadioTask, NULL, &RadioTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
