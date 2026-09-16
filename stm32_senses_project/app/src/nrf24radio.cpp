@@ -23,7 +23,11 @@ bool Nrf24Radio::init()
         return false;
     }
 
-    writeRegister(REG_RF_CH, RESET_RF_CH);  // повертаємо чистий стан
+    writeRegister(REG_RF_CH, RESET_RF_CH);
+
+    disableAllAutoAck();
+
+    writeRegister(REG_STATUS, STATUS_RX_DR_BIT | STATUS_TX_DS_BIT | STATUS_MAX_RT_BIT);
 
     return true;
 }
@@ -73,6 +77,44 @@ uint8_t Nrf24Radio::writeRegister(uint8_t reg, uint8_t value) const
     endTransaction();
 
     return rxBuf[0];
+}
+
+uint8_t Nrf24Radio::sendCommand(uint8_t command) const
+{
+    std::array<uint8_t, 1> txBuf = {command};
+    std::array<uint8_t, 1> rxBuf = {0};
+
+    beginTransaction();
+    HAL_SPI_TransmitReceive(hspi_,
+                            txBuf.data(),  //
+                            rxBuf.data(),  //
+                            txBuf.size(),  //
+                            HAL_MAX_DELAY);
+    endTransaction();
+
+    return rxBuf[0];
+}
+
+bool Nrf24Radio::enableAutoAck(uint8_t pipeBit) const
+{
+    uint8_t enAa = readRegister(REG_EN_AA);
+    enAa |= pipeBit;
+    writeRegister(REG_EN_AA, enAa);
+    return true;
+}
+
+bool Nrf24Radio::disableAutoAck(uint8_t pipeBit) const
+{
+    uint8_t enAa = readRegister(REG_EN_AA);
+    enAa &= ~pipeBit;
+    writeRegister(REG_EN_AA, enAa);
+    return true;
+}
+
+bool Nrf24Radio::disableAllAutoAck() const
+{
+    writeRegister(REG_EN_AA, 0x00);
+    return true;
 }
 
 // Записує багатобайтний R_REGISTER-регістр (5-байтну адресу — RX_ADDR_P0, RX_ADDR_P1 чи TX_ADDR)
@@ -349,31 +391,31 @@ bool Nrf24Radio::transmit(const uint8_t* data, uint8_t length)
     // Завантажуємо payload у TX FIFO (W_TX_PAYLOAD) по SPI.
     writeTxPayload(data, length);
 
-    // Чекаємо підтвердження реальної радіопередачі.
-    // Активний поллінг - щоразу заново читаємо TX_DS біт через SPI
-    // Register Map, Table 28: "Asserted when packet transmitted on TX"
-    constexpr uint32_t TIMEOUT_MS = 100;
+    // // Чекаємо підтвердження реальної радіопередачі.
+    // // Активний поллінг - щоразу заново читаємо TX_DS біт через SPI
+    // // Register Map, Table 28: "Asserted when packet transmitted on TX"
+    // constexpr uint32_t TIMEOUT_MS = 100;
 
-    uint32_t elapsed = 0;
-    while (elapsed < TIMEOUT_MS)
-    {
-        uint8_t status = readRegister(REG_STATUS);
-        if ((status & STATUS_TX_DS_BIT) != 0)
-        {
-            // "Write 1 to clear bit" (Table 28) — обов'язково скидаємо
-            // прапорець. Якщо цього не зробити, наступний виклик
-            // transmit() одразу побачить ЗАСТАРІЛИЙ TX_DS від цієї
-            // передачі й помилково поверне true, навіть не почавши
-            // нову передачу.
-            writeRegister(REG_STATUS, STATUS_TX_DS_BIT);
-            return true;
-        }
-        osDelay(1);
-        elapsed++;
-    }
+    // uint32_t elapsed = 0;
+    // while (elapsed < TIMEOUT_MS)
+    // {
+    //     uint8_t status = readRegister(REG_STATUS);
+    //     if ((status & STATUS_TX_DS_BIT) != 0)
+    //     {
+    //         // "Write 1 to clear bit" (Table 28) — обов'язково скидаємо
+    //         // прапорець. Якщо цього не зробити, наступний виклик
+    //         // transmit() одразу побачить ЗАСТАРІЛИЙ TX_DS від цієї
+    //         // передачі й помилково поверне true, навіть не почавши
+    //         // нову передачу.
+    //         writeRegister(REG_STATUS, STATUS_TX_DS_BIT);
+    //         return true;
+    //     }
+    //     osDelay(1);
+    //     elapsed++;
+    // }
 
-    LOG_ERROR(TAG, "transmit() timed out waiting for TX_DS");
-    return false;
+    // LOG_ERROR(TAG, "transmit() timed out waiting for TX_DS");
+    return true;
 }
 
 bool Nrf24Radio::receive(uint8_t* buffer, uint8_t length)

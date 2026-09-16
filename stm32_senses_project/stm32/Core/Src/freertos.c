@@ -61,6 +61,12 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
    /* Run time stack overflow checking is performed if
    configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
    called if a stack overflow is detected. */
+  (void)xTask;
+  while (1)
+  {
+      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+      for (volatile int i = 0; i < 500000; i++);
+  }
 }
 /* USER CODE END 4 */
 

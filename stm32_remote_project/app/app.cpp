@@ -51,7 +51,6 @@ extern "C" void app_main()
     while (true)
     {
         HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
-        osDelay(1000);
 
         int16_t joyControlX = 0;
         joystickControl.readAdcChannelXPercentage(joyControlX);

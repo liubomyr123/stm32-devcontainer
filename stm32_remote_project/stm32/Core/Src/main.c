@@ -189,10 +189,10 @@ int main(void)
   /* Create the thread(s) */
   /* creation of AppTask */
   AppTaskHandle = osThreadNew(StartAppTask, NULL, &AppTask_attributes);
-  RadioTaskHandle = osThreadNew(RadioTask, NULL, &RadioTask_attributes);
-
+  
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  RadioTaskHandle = osThreadNew(RadioTask, NULL, &RadioTask_attributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
