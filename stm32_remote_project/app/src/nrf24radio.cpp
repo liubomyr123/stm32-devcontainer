@@ -2,7 +2,7 @@
 
 bool Nrf24Radio::init()
 {
-    HAL_GPIO_WritePin(cePort_, cePin_, GPIO_PIN_RESET);
+    ceLow();
     osDelay(NRF_POWER_ON_RESET_DELAY_MS);
 
     // Найнадійніший спосіб перевірити реальну відповідь чіпа (немає
@@ -164,33 +164,46 @@ bool Nrf24Radio::isRxEnabled() const
     return getCurrentState() == RadioState::RxMode;
 }
 
-bool Nrf24Radio::enableTx()
+bool Nrf24Radio::goStandbyI()
 {
-    if (direction_ != Direction::Tx && direction_ != Direction::HalfDuplex)
-    {
-        LOG_ERROR(TAG, "enableTx() called, but radio is not in TX mode");
-        return false;
-    }
+    ceLow();
 
-    // pwrUp = 1 | primRx = 0 | ceHigh = 1 | FIFO = 1
+    // pwrUp = 1 | primRx = 0 | ceHigh = 0
     uint8_t config = readRegister(REG_CONFIG);
     config |= CONFIG_PWR_UP_BIT;
     config &= ~CONFIG_PRIM_RX_BIT;
     writeRegister(REG_CONFIG, config);
-    ceHigh();
 
-    // 6.1.7 Timing Information:
-    // Standby modes -> TX/RX mode => 130µs
     // [1ms = 1000µs]
-    osDelay(2);
+    osDelay(1);
     return true;
 }
 
-bool Nrf24Radio::enableRx()
+bool Nrf24Radio::startTx()
+{
+    if (direction_ != Direction::Tx && direction_ != Direction::HalfDuplex)
+    {
+        LOG_ERROR(TAG, "startTx() called, but radio is not in TX mode");
+        return false;
+    }
+
+    // pwrUp = 1 | primRx = 0
+    uint8_t config = readRegister(REG_CONFIG);
+    config |= CONFIG_PWR_UP_BIT;
+    config &= ~CONFIG_PRIM_RX_BIT;
+    writeRegister(REG_CONFIG, config);
+
+    // Потім піднімаємо CE=1 (і утримуємо понад 10µs) → переходимо в TX Settling
+    ceHigh();
+    osDelay(1);
+    return true;
+}
+
+bool Nrf24Radio::startRx()
 {
     if (direction_ != Direction::Rx && direction_ != Direction::HalfDuplex)
     {
-        LOG_ERROR(TAG, "enableRx() called, but radio is not in RX mode");
+        LOG_ERROR(TAG, "startRx() called, but radio is not in RX mode");
         return false;
     }
 
@@ -371,9 +384,6 @@ void Nrf24Radio::readRxPayload(uint8_t* buffer, size_t length)
     }
 }
 
-// Відправляє один payload (1-32 байти). CE вже піднятий (enableTx()),
-// тому чіп сам почне передачу щойно payload потрапить у TX FIFO
-// (Standby-II → TX mode, datasheet §6.1.5).
 bool Nrf24Radio::transmit(const uint8_t* data, uint8_t length)
 {
     if (direction_ != Direction::Tx && direction_ != Direction::HalfDuplex)
@@ -382,39 +392,14 @@ bool Nrf24Radio::transmit(const uint8_t* data, uint8_t length)
         return false;
     }
 
-    if (!isCeHigh())
+    if (isCeHigh())
     {
-        LOG_ERROR(TAG, "transmit() called, but CE is not high — call enableTx() first");
+        LOG_ERROR(TAG, "transmit() called, but CE is high");
         return false;
     }
 
-    // Завантажуємо payload у TX FIFO (W_TX_PAYLOAD) по SPI.
+    // Спочатку завантажуємо payload у TX FIFO (W_TX_PAYLOAD) по SPI.
     writeTxPayload(data, length);
-
-    // // Чекаємо підтвердження реальної радіопередачі.
-    // // Активний поллінг - щоразу заново читаємо TX_DS біт через SPI
-    // // Register Map, Table 28: "Asserted when packet transmitted on TX"
-    // constexpr uint32_t TIMEOUT_MS = 100;
-
-    // uint32_t elapsed = 0;
-    // while (elapsed < TIMEOUT_MS)
-    // {
-    //     uint8_t status = readRegister(REG_STATUS);
-    //     if ((status & STATUS_TX_DS_BIT) != 0)
-    //     {
-    //         // "Write 1 to clear bit" (Table 28) — обов'язково скидаємо
-    //         // прапорець. Якщо цього не зробити, наступний виклик
-    //         // transmit() одразу побачить ЗАСТАРІЛИЙ TX_DS від цієї
-    //         // передачі й помилково поверне true, навіть не почавши
-    //         // нову передачу.
-    //         writeRegister(REG_STATUS, STATUS_TX_DS_BIT);
-    //         return true;
-    //     }
-    //     osDelay(1);
-    //     elapsed++;
-    // }
-
-    // LOG_ERROR(TAG, "transmit() timed out waiting for TX_DS");
     return true;
 }
 
@@ -435,6 +420,7 @@ bool Nrf24Radio::receive(uint8_t* buffer, uint8_t length)
     uint8_t status = readRegister(REG_STATUS);
     if ((status & STATUS_RX_DR_BIT) == 0)
     {
+        LOG_WARNING(TAG, "receive() called, but RX_DR is not set — no new data");
         return false;  // немає нових даних
     }
 

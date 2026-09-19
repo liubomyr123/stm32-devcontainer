@@ -14,7 +14,6 @@ extern SPI_HandleTypeDef hspi1;
 #define NRF24_IRQ_FLAG (1UL << 0)
 
 constexpr uint32_t IRQ_WAIT_TIMEOUT_MS = 50;
-constexpr uint32_t FRAME_INTERVAL_MS = 50;
 
 // Спільний RF-фільтр-ключ для комунікації пульт↔senses-плата (MVP, один канал)
 constexpr std::array<uint8_t, 5> SHARED_RF_FILTER_KEY = {0xE7, 0xE7, 0xE7, 0xE7, 0xE7};
@@ -38,22 +37,21 @@ extern "C" void RadioTask(void* argument)
     (void)argument;
     LOG_INFO("RADIO", "Task started");
 
-    Nrf24Radio nrf{&hspi1,                     //
-                   NRF_CSN_PORT, NRF_CSN_PIN,  //
-                   NRF_CE_PORT,  NRF_CE_PIN,   //
-                   Direction::Tx};
+    uint8_t tXcounter = 0;
+
+    Nrf24Radio nrf{&hspi1,  //
+                   NRF_CSN_PORT,
+                   NRF_CSN_PIN,  //
+                   NRF_CE_PORT,
+                   NRF_CE_PIN,  //
+                   Direction::HalfDuplex};
 
     if (!nrf.init())
     {
         vTaskDelete(nullptr);
     }
 
-    bool result = nrf.enableAutoAck(EN_AA_P0_BIT);
-    if (!result)
-    {
-        vTaskDelete(nullptr);
-    }
-    result = nrf.setAirDataRate(DataRate::Mbps1);
+    bool result = nrf.setAirDataRate(DataRate::Mbps1);
     if (!result)
     {
         vTaskDelete(nullptr);
@@ -69,34 +67,62 @@ extern "C" void RadioTask(void* argument)
         vTaskDelete(nullptr);
     }
 
-    LOG_INFO("RADIO", "State before enableTx() = %d", static_cast<int>(nrf.getCurrentState()));
-    result = nrf.enableTx();
+    result = nrf.setRxRfFilterKey(SHARED_RF_FILTER_KEY);
     if (!result)
     {
         vTaskDelete(nullptr);
     }
 
-    RadioState txState = nrf.getCurrentState();
-    LOG_INFO("RADIO", "State after enableTx() = %d (expect StandbyII = %d)",
-             static_cast<int>(txState), static_cast<int>(RadioState::StandbyII));
+    result = nrf.setRxPayloadLength(sizeof(tXcounter));
+    if (!result)
+    {
+        vTaskDelete(nullptr);
+    }
 
-    uint32_t counter = 0;
-
+    RadioState loopState = RadioState::TxMode;
     while (true)
     {
-        uint8_t buffer[4] = {
-            static_cast<uint8_t>((counter >> 24) & 0xFF),
-            static_cast<uint8_t>((counter >> 16) & 0xFF),
-            static_cast<uint8_t>((counter >> 8) & 0xFF),
-            static_cast<uint8_t>(counter & 0xFF),
-        };
-
-        counter++;
-
-        if (!nrf.transmit(buffer, sizeof(buffer)))
+        LOG_INFO("RADIO", "Before goStandbyI() = %d", static_cast<int>(nrf.getCurrentState()));
+        result = nrf.goStandbyI();
+        if (!result)
         {
-            osDelay(FRAME_INTERVAL_MS);
+            LOG_ERROR("RADIO", "goStandbyI() failed unexpectedly");
             continue;
+        }
+
+        RadioState txState = nrf.getCurrentState();
+        LOG_INFO("RADIO", "After goStandbyI() = %d (expect StandbyI = %d)",
+                 static_cast<int>(txState), static_cast<int>(RadioState::StandbyI));
+
+        switch (loopState)
+        {
+            case RadioState::TxMode:
+            {
+                if (!nrf.transmit(&tXcounter, sizeof(tXcounter)))
+                {
+                    continue;
+                }
+
+                if (!nrf.startTx())
+                {
+                    continue;
+                }
+                break;
+            }
+            case RadioState::RxMode:
+            {
+                if (!nrf.startRx())
+                {
+                    continue;
+                }
+                break;
+            }
+            case RadioState::Unknown:
+            case RadioState::StandbyI:
+            case RadioState::StandbyII:
+            case RadioState::PowerDown:
+            default:
+                break;
         }
 
         uint32_t flags = osThreadFlagsWait(NRF24_IRQ_FLAG, osFlagsWaitAny, IRQ_WAIT_TIMEOUT_MS);
@@ -106,32 +132,33 @@ extern "C" void RadioTask(void* argument)
 
             if ((status & STATUS_RX_DR_BIT) != 0)
             {
-                LOG_INFO("RADIO", "OK: RX_DR (received data ready)");
+                uint8_t rxCounter = 0;
+                if (!nrf.receive(&rxCounter, sizeof(rxCounter)))
+                {
+                    LOG_ERROR("RADIO", "receive() failed unexpectedly despite RX_DR set");
+                    continue;
+                }
+                LOG_INFO("RADIO", "OK: RX_DR");
+                tXcounter = rxCounter + 1;
+                loopState = RadioState::TxMode;
             }
             if ((status & STATUS_TX_DS_BIT) != 0)
             {
-                LOG_INFO("RADIO", "OK: TX_DS (packet #%lu delivered)", counter - 1);
+                LOG_INFO("RADIO", "OK: TX_DS");
+                loopState = RadioState::RxMode;
             }
-            /**
-                Maximum number of TX retransmits interrupt
-                Write 1 to clear bit. If MAX_RT is asserted it must
-                be cleared to enable further communication.
-            */
-            if ((status & STATUS_MAX_RT_BIT) != 0)
-            {
-                LOG_ERROR("RADIO", "FAILED: MAX_RT (packet #%lu lost) — recovering", counter - 1);
-                nrf.sendCommand(FLUSH_TX);
-            }
-
-            nrf.writeRegister(REG_STATUS, status);
+            continue;
         }
-        else
+
+        LOG_ERROR("RADIO", "FAILED: no IRQ within %lums", IRQ_WAIT_TIMEOUT_MS);
+
+        if (loopState == RadioState::TxMode)
         {
-            LOG_ERROR("RADIO", "FAILED: no IRQ within %lums (packet #%lu) — recovering",
-                      IRQ_WAIT_TIMEOUT_MS, counter - 1);
             nrf.sendCommand(FLUSH_TX);
         }
-
-        osDelay(FRAME_INTERVAL_MS);
+        if (loopState == RadioState::RxMode)
+        {
+            loopState = RadioState::TxMode;
+        }
     }
 }
