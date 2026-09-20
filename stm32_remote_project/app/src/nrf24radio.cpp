@@ -426,9 +426,6 @@ bool Nrf24Radio::receive(uint8_t* buffer, uint8_t length)
 
     readRxPayload(buffer, length);
 
-    // "Write 1 to clear bit" (Table 28)
-    writeRegister(REG_STATUS, STATUS_RX_DR_BIT);
-
     return true;
 }
 

@@ -157,8 +157,9 @@ class Nrf24Radio
     {
     }
 
-    bool enableTx();
-    bool enableRx();
+    bool goStandbyI();
+    bool startRx();
+    bool startTx();
 
     bool isTxEnabled() const;
     bool isRxEnabled() const;

@@ -138,13 +138,17 @@ extern "C" void RadioTask(void* argument)
                     LOG_ERROR("RADIO", "receive() failed unexpectedly despite RX_DR set");
                     continue;
                 }
-                LOG_INFO("RADIO", "OK: RX_DR");
+                // "Write 1 to clear bit" (Table 28)
+                nrf.writeRegister(REG_STATUS, STATUS_RX_DR_BIT);
+                LOG_INFO("RADIO", "OK: RX_DR, received=%d", rxCounter);
                 tXcounter = rxCounter + 1;
+                LOG_INFO("RADIO", "Next tXcounter=%d", tXcounter);
                 loopState = RadioState::TxMode;
             }
             if ((status & STATUS_TX_DS_BIT) != 0)
             {
-                LOG_INFO("RADIO", "OK: TX_DS");
+                LOG_INFO("RADIO", "OK: TX_DS, sent=%d", tXcounter);
+                nrf.writeRegister(REG_STATUS, status);
                 loopState = RadioState::RxMode;
             }
             continue;
