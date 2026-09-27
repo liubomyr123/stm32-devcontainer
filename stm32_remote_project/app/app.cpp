@@ -2,6 +2,7 @@
 
 #include "cmsis_os.h"
 #include "fatfs.h"
+#include "include/crypto_selftest.hpp"
 #include "include/joystickKY023.hpp"
 #include "include/logger.hpp"
 #include "include/nrf24radio.hpp"
@@ -13,6 +14,8 @@ extern TIM_HandleTypeDef htim2;
 extern "C" void app_main()
 {
     LOG_INFO("APP", "Started!");
+
+    runCryptoSelfTest();
 
     // SdCard card = {};
 

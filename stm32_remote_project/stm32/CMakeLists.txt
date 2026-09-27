@@ -72,6 +72,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     ${APP_DIR}
     ${APP_DIR}/include
+    ${APP_DIR}/third_party/mbedtls/include
+    ${APP_DIR}/third_party/mbedtls/library
 )
 
 # Add project symbols (macros)
