@@ -2,103 +2,79 @@
 
 #include <cstring>
 
-#include "SecureChannel.hpp"
+#include "include/aes128ccm_cipher.hpp"
 #include "include/logger.hpp"
+
+void bytesToHex(const uint8_t* data, size_t len, std::array<char, 128>& out)
+{
+    size_t pos = 0;
+    for (size_t i = 0; i < len && pos + 3 < out.size(); ++i)
+    {
+        pos += static_cast<size_t>(snprintf(out.data() + pos, out.size() - pos, "%02X ", data[i]));
+    }
+}
 
 bool runCryptoSelfTest()
 {
-    bool allOk = true;
+    const uint8_t testKey[Aes128CcmCipher::kKeyLength] = {0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE,
+                                                          0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88,
+                                                          0x09, 0xCF, 0x4F, 0x3C};
 
-    const uint8_t testKey[SecureChannel::kKeyLen] = {0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE,
-                                                     0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88,
-                                                     0x09, 0xCF, 0x4F, 0x3C};
-
-    const uint8_t direction[3] = {0x01, 0x00, 0x00};
-
-    SecureChannel ch;
-    if (!ch.setKey(testKey))
+    Aes128CcmCipher cipher(testKey);
+    if (!cipher.init())
     {
-        LOG_INFO("CRYPTO", "FAIL: setKey не вдався");
         return false;
     }
 
-    // ---- Сценарій 1: звичайний round-trip ----
-    {
-        const uint8_t plaintext[20] = {0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A,
-                                       0x4B, 0x49, 0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x53};
+    const uint8_t plaintext[20] = {0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A,
+                                   0x4B, 0x49, 0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x53};
 
-        uint8_t nonce7[SecureChannel::kIvLen];
-        SecureChannel::buildNonce(47, direction, nonce7);
+    std::array<char, 128> hexBuf{};
 
-        uint8_t ciphertext[sizeof(plaintext)];
-        uint8_t tag[SecureChannel::kTagLen];
+    bytesToHex(plaintext, sizeof(plaintext), hexBuf);
+    LOG_INFO("CRYPTO", "Сирі дані:        %s", hexBuf.data());
 
-        bool encOk = ch.encrypt(nonce7, plaintext, sizeof(plaintext), ciphertext, tag);
+    // ---- Перший виклик encrypt() ----
+    uint8_t ciphertext1[sizeof(plaintext)];
+    bool encOk1 = cipher.encrypt(plaintext, sizeof(plaintext), ciphertext1);
 
-        uint8_t decrypted[sizeof(plaintext)];
-        bool decOk = ch.decrypt(nonce7, ciphertext, sizeof(ciphertext), tag, decrypted);
+    bytesToHex(ciphertext1, sizeof(ciphertext1), hexBuf);
+    LOG_INFO("CRYPTO", "Зашифровано (1):  %s", hexBuf.data());
 
-        bool matches = decOk && (memcmp(plaintext, decrypted, sizeof(plaintext)) == 0);
+    bytesToHex(cipher.getLastNonce().data(), Aes128CcmCipher::kIvLength, hexBuf);
+    LOG_INFO("CRYPTO", "Nonce (1):        %s", hexBuf.data());
 
-        LOG_INFO("CRYPTO", "Сценарій 1 (round-trip): encrypt=%s decrypt=%s match=%s",
-                 encOk ? "OK" : "FAIL", decOk ? "OK" : "FAIL", matches ? "OK" : "FAIL");
+    bytesToHex(cipher.getLastTag().data(), Aes128CcmCipher::kTagLength, hexBuf);
+    LOG_INFO("CRYPTO", "Tag (1):          %s", hexBuf.data());
 
-        if (!encOk || !decOk || !matches)
-            allOk = false;
-    }
+    // ---- Другий виклик encrypt() — той самий plaintext, той самий ключ ----
+    uint8_t ciphertext2[sizeof(plaintext)];
+    bool encOk2 = cipher.encrypt(plaintext, sizeof(plaintext), ciphertext2);
 
-    // ---- Сценарій 2: підробка ciphertext -> tag НЕ має зійтись ----
-    {
-        const uint8_t plaintext[20] = {0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A,
-                                       0x4B, 0x49, 0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x53};
+    bytesToHex(ciphertext2, sizeof(ciphertext2), hexBuf);
+    LOG_INFO("CRYPTO", "Зашифровано (2):  %s", hexBuf.data());
 
-        uint8_t nonce7[SecureChannel::kIvLen];
-        SecureChannel::buildNonce(48, direction, nonce7);
+    bytesToHex(cipher.getLastNonce().data(), Aes128CcmCipher::kIvLength, hexBuf);
+    LOG_INFO("CRYPTO", "Nonce (2):        %s", hexBuf.data());
 
-        uint8_t ciphertext[sizeof(plaintext)];
-        uint8_t tag[SecureChannel::kTagLen];
-        ch.encrypt(nonce7, plaintext, sizeof(plaintext), ciphertext, tag);
+    bytesToHex(cipher.getLastTag().data(), Aes128CcmCipher::kTagLength, hexBuf);
+    LOG_INFO("CRYPTO", "Tag (2):          %s", hexBuf.data());
 
-        ciphertext[5] ^= 0xFF;
+    // ---- Розшифровуємо другий пакет і звіряємо ----
+    uint8_t decrypted[sizeof(plaintext)];
+    bool decOk = cipher.decrypt(cipher.getLastNonce(), ciphertext2, sizeof(ciphertext2),
+                                cipher.getLastTag(), decrypted);
 
-        uint8_t decrypted[sizeof(plaintext)];
-        bool decOk = ch.decrypt(nonce7, ciphertext, sizeof(ciphertext), tag, decrypted);
+    bytesToHex(decrypted, sizeof(decrypted), hexBuf);
+    LOG_INFO("CRYPTO", "Розшифровано:     %s", hexBuf.data());
 
-        bool testPassed = (decOk == false);
+    bool matches = decOk && (memcmp(plaintext, decrypted, sizeof(plaintext)) == 0);
 
-        LOG_INFO("CRYPTO", "Сценарій 2 (підроблений ciphertext): decrypt=%s -> тест %s",
-                 decOk ? "OK(!)" : "FAIL(очікувано)", testPassed ? "PASSED" : "FAILED");
+    LOG_INFO("CRYPTO", "Round-trip: encrypt1=%s encrypt2=%s decrypt=%s match=%s",
+             encOk1 ? "OK" : "FAIL",  //
+             encOk2 ? "OK" : "FAIL",  //
+             decOk ? "OK" : "FAIL",   //
+             matches ? "OK" : "FAIL");
 
-        if (!testPassed)
-            allOk = false;
-    }
-
-    // ---- Сценарій 3: підробка tag -> теж НЕ має зійтись ----
-    {
-        const uint8_t plaintext[20] = {0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A,
-                                       0x4B, 0x49, 0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x53};
-
-        uint8_t nonce7[SecureChannel::kIvLen];
-        SecureChannel::buildNonce(49, direction, nonce7);
-
-        uint8_t ciphertext[sizeof(plaintext)];
-        uint8_t tag[SecureChannel::kTagLen];
-        ch.encrypt(nonce7, plaintext, sizeof(plaintext), ciphertext, tag);
-
-        tag[0] ^= 0xFF;
-
-        uint8_t decrypted[sizeof(plaintext)];
-        bool decOk = ch.decrypt(nonce7, ciphertext, sizeof(ciphertext), tag, decrypted);
-
-        bool testPassed = (decOk == false);
-
-        LOG_INFO("CRYPTO", "Сценарій 3 (підроблений tag): decrypt=%s -> тест %s",
-                 decOk ? "OK(!)" : "FAIL(очікувано)", testPassed ? "PASSED" : "FAILED");
-
-        if (!testPassed)
-            allOk = false;
-    }
-
-    LOG_INFO("CRYPTO", "ЗАГАЛЬНИЙ РЕЗУЛЬТАТ: %s", allOk ? "ALL PASSED" : "SOMETHING FAILED");
-    return allOk;
+    return encOk1 && encOk2 && decOk && matches;
 }

@@ -177,7 +177,8 @@
  *     - if (MBEDTLS_PLATFORM_CALLOC_MACRO && MBEDTLS_PLATFORM_FREE_MACRO):
  *         - mbedtls_calloc = MBEDTLS_PLATFORM_CALLOC_MACRO
  *     - if !(MBEDTLS_PLATFORM_CALLOC_MACRO && MBEDTLS_PLATFORM_FREE_MACRO):
- *         - Dynamic setup via mbedtls_platform_set_calloc_free is now possible with a default value MBEDTLS_PLATFORM_STD_CALLOC.
+ *         - Dynamic setup via mbedtls_platform_set_calloc_free is now possible with a default value
+ * MBEDTLS_PLATFORM_STD_CALLOC.
  *         - How is MBEDTLS_PLATFORM_STD_CALLOC handled?
  *         - if MBEDTLS_PLATFORM_NO_STD_FUNCTIONS:
  *             - MBEDTLS_PLATFORM_STD_CALLOC is not set to anything;
@@ -194,12 +195,13 @@
  *
  *         - mbedtls_calloc = MBEDTLS_PLATFORM_STD_CALLOC.
  *
- * Defining MBEDTLS_PLATFORM_CALLOC_MACRO and #MBEDTLS_PLATFORM_STD_CALLOC at the same time is not possible.
- * MBEDTLS_PLATFORM_CALLOC_MACRO and MBEDTLS_PLATFORM_FREE_MACRO must both be defined or undefined at the same time.
- * #MBEDTLS_PLATFORM_STD_CALLOC and #MBEDTLS_PLATFORM_STD_FREE do not have to be defined at the same time, as, if they are used,
- * dynamic setup of these functions is possible. See the tree above to see how are they handled in all cases.
- * An uninitialized #MBEDTLS_PLATFORM_STD_CALLOC always fails, returning a null pointer.
- * An uninitialized #MBEDTLS_PLATFORM_STD_FREE does not do anything.
+ * Defining MBEDTLS_PLATFORM_CALLOC_MACRO and #MBEDTLS_PLATFORM_STD_CALLOC at the same time is not
+ * possible. MBEDTLS_PLATFORM_CALLOC_MACRO and MBEDTLS_PLATFORM_FREE_MACRO must both be defined or
+ * undefined at the same time. #MBEDTLS_PLATFORM_STD_CALLOC and #MBEDTLS_PLATFORM_STD_FREE do not
+ * have to be defined at the same time, as, if they are used, dynamic setup of these functions is
+ * possible. See the tree above to see how are they handled in all cases. An uninitialized
+ * #MBEDTLS_PLATFORM_STD_CALLOC always fails, returning a null pointer. An uninitialized
+ * #MBEDTLS_PLATFORM_STD_FREE does not do anything.
  *
  * Requires: MBEDTLS_PLATFORM_C
  *
@@ -1601,7 +1603,6 @@
  */
 //#define MBEDTLS_SSL_DTLS_CONNECTION_ID
 
-
 /**
  * \def MBEDTLS_SSL_DTLS_CONNECTION_ID_COMPAT
  *
@@ -2904,7 +2905,7 @@
  *
  * This module enables mbedtls_strerror().
  */
-//#define MBEDTLS_ERROR_C
+#define MBEDTLS_ERROR_C
 
 /**
  * \def MBEDTLS_GCM_C
@@ -4083,17 +4084,19 @@
 //#define MBEDTLS_MPI_MAX_SIZE            1024 /**< Maximum number of bytes for usable MPIs. */
 
 /* CTR_DRBG options */
-//#define MBEDTLS_CTR_DRBG_ENTROPY_LEN               48 /**< Amount of entropy used per seed by default (48 with SHA-512, 32 with SHA-256) */
-//#define MBEDTLS_CTR_DRBG_RESEED_INTERVAL        10000 /**< Interval before reseed is performed by default */
-//#define MBEDTLS_CTR_DRBG_MAX_INPUT                256 /**< Maximum number of additional input bytes */
-//#define MBEDTLS_CTR_DRBG_MAX_REQUEST             1024 /**< Maximum number of requested bytes per call */
-//#define MBEDTLS_CTR_DRBG_MAX_SEED_INPUT           384 /**< Maximum size of (re)seed buffer */
+//#define MBEDTLS_CTR_DRBG_ENTROPY_LEN               48 /**< Amount of entropy used per seed by
+//default (48 with SHA-512, 32 with SHA-256) */ #define MBEDTLS_CTR_DRBG_RESEED_INTERVAL 10000 /**<
+//Interval before reseed is performed by default */ #define MBEDTLS_CTR_DRBG_MAX_INPUT 256 /**<
+//Maximum number of additional input bytes */ #define MBEDTLS_CTR_DRBG_MAX_REQUEST             1024
+///**< Maximum number of requested bytes per call */ #define MBEDTLS_CTR_DRBG_MAX_SEED_INPUT 384
+///**< Maximum size of (re)seed buffer */
 
 /* HMAC_DRBG options */
-//#define MBEDTLS_HMAC_DRBG_RESEED_INTERVAL   10000 /**< Interval before reseed is performed by default */
-//#define MBEDTLS_HMAC_DRBG_MAX_INPUT           256 /**< Maximum number of additional input bytes */
-//#define MBEDTLS_HMAC_DRBG_MAX_REQUEST        1024 /**< Maximum number of requested bytes per call */
-//#define MBEDTLS_HMAC_DRBG_MAX_SEED_INPUT      384 /**< Maximum size of (re)seed buffer */
+//#define MBEDTLS_HMAC_DRBG_RESEED_INTERVAL   10000 /**< Interval before reseed is performed by
+//default */ #define MBEDTLS_HMAC_DRBG_MAX_INPUT           256 /**< Maximum number of additional
+//input bytes */ #define MBEDTLS_HMAC_DRBG_MAX_REQUEST        1024 /**< Maximum number of requested
+//bytes per call */ #define MBEDTLS_HMAC_DRBG_MAX_SEED_INPUT      384 /**< Maximum size of (re)seed
+//buffer */
 
 /* ECP options */
 //#define MBEDTLS_ECP_WINDOW_SIZE            4 /**< Maximum window size used */
@@ -4101,14 +4104,17 @@
 
 /* Entropy options */
 //#define MBEDTLS_ENTROPY_MAX_SOURCES                20 /**< Maximum number of sources supported */
-//#define MBEDTLS_ENTROPY_MAX_GATHER                128 /**< Maximum amount requested from entropy sources */
-//#define MBEDTLS_ENTROPY_MIN_HARDWARE               32 /**< Default minimum number of bytes required for the hardware entropy source mbedtls_hardware_poll() before entropy is released */
+//#define MBEDTLS_ENTROPY_MAX_GATHER                128 /**< Maximum amount requested from entropy
+//sources */ #define MBEDTLS_ENTROPY_MIN_HARDWARE               32 /**< Default minimum number of
+//bytes required for the hardware entropy source mbedtls_hardware_poll() before entropy is released
+//*/
 
 /* Memory buffer allocator options */
 //#define MBEDTLS_MEMORY_ALIGN_MULTIPLE      4 /**< Align on multiples of this value */
 
 /* Platform options */
-//#define MBEDTLS_PLATFORM_STD_MEM_HDR   <stdlib.h> /**< Header to include if MBEDTLS_PLATFORM_NO_STD_FUNCTIONS is defined. Don't define if no header is needed. */
+//#define MBEDTLS_PLATFORM_STD_MEM_HDR   <stdlib.h> /**< Header to include if
+//MBEDTLS_PLATFORM_NO_STD_FUNCTIONS is defined. Don't define if no header is needed. */
 
 /** \def MBEDTLS_PLATFORM_STD_CALLOC
  *
@@ -4116,10 +4122,11 @@
  * It must initialize the allocated buffer memory to zeroes.
  * The size of the buffer is the product of the two parameters.
  * The calloc function returns either a null pointer or a pointer to the allocated space.
- * If the product is 0, the function may either return NULL or a valid pointer to an array of size 0 which is a valid input to the deallocation function.
- * An uninitialized #MBEDTLS_PLATFORM_STD_CALLOC always fails, returning a null pointer.
- * See the description of #MBEDTLS_PLATFORM_MEMORY for more details.
- * The corresponding deallocation function is #MBEDTLS_PLATFORM_STD_FREE.
+ * If the product is 0, the function may either return NULL or a valid pointer to an array of size 0
+ * which is a valid input to the deallocation function. An uninitialized
+ * #MBEDTLS_PLATFORM_STD_CALLOC always fails, returning a null pointer. See the description of
+ * #MBEDTLS_PLATFORM_MEMORY for more details. The corresponding deallocation function is
+ * #MBEDTLS_PLATFORM_STD_FREE.
  */
 //#define MBEDTLS_PLATFORM_STD_CALLOC        calloc
 
@@ -4127,41 +4134,53 @@
  *
  * Default free to use, can be undefined.
  * NULL is a valid parameter, and the function must do nothing.
- * A non-null parameter will always be a pointer previously returned by #MBEDTLS_PLATFORM_STD_CALLOC and not yet freed.
- * An uninitialized #MBEDTLS_PLATFORM_STD_FREE does not do anything.
- * See the description of #MBEDTLS_PLATFORM_MEMORY for more details (same principles as for MBEDTLS_PLATFORM_STD_CALLOC apply).
+ * A non-null parameter will always be a pointer previously returned by #MBEDTLS_PLATFORM_STD_CALLOC
+ * and not yet freed. An uninitialized #MBEDTLS_PLATFORM_STD_FREE does not do anything. See the
+ * description of #MBEDTLS_PLATFORM_MEMORY for more details (same principles as for
+ * MBEDTLS_PLATFORM_STD_CALLOC apply).
  */
 //#define MBEDTLS_PLATFORM_STD_FREE            free
 //#define MBEDTLS_PLATFORM_STD_SETBUF      setbuf /**< Default setbuf to use, can be undefined */
 //#define MBEDTLS_PLATFORM_STD_EXIT            exit /**< Default exit to use, can be undefined */
-//#define MBEDTLS_PLATFORM_STD_TIME            time /**< Default time to use, can be undefined. MBEDTLS_HAVE_TIME must be enabled */
-//#define MBEDTLS_PLATFORM_STD_FPRINTF      fprintf /**< Default fprintf to use, can be undefined */
-//#define MBEDTLS_PLATFORM_STD_PRINTF        printf /**< Default printf to use, can be undefined */
+//#define MBEDTLS_PLATFORM_STD_TIME            time /**< Default time to use, can be undefined.
+//MBEDTLS_HAVE_TIME must be enabled */ #define MBEDTLS_PLATFORM_STD_FPRINTF      fprintf /**<
+//Default fprintf to use, can be undefined */ #define MBEDTLS_PLATFORM_STD_PRINTF        printf /**<
+//Default printf to use, can be undefined */
 /* Note: your snprintf must correctly zero-terminate the buffer! */
-//#define MBEDTLS_PLATFORM_STD_SNPRINTF    snprintf /**< Default snprintf to use, can be undefined */
-//#define MBEDTLS_PLATFORM_STD_EXIT_SUCCESS       0 /**< Default exit value to use, can be undefined */
-//#define MBEDTLS_PLATFORM_STD_EXIT_FAILURE       1 /**< Default exit value to use, can be undefined */
-//#define MBEDTLS_PLATFORM_STD_NV_SEED_READ   mbedtls_platform_std_nv_seed_read /**< Default nv_seed_read function to use, can be undefined */
-//#define MBEDTLS_PLATFORM_STD_NV_SEED_WRITE  mbedtls_platform_std_nv_seed_write /**< Default nv_seed_write function to use, can be undefined */
-//#define MBEDTLS_PLATFORM_STD_NV_SEED_FILE  "seedfile" /**< Seed file to read/write with default implementation */
+//#define MBEDTLS_PLATFORM_STD_SNPRINTF    snprintf /**< Default snprintf to use, can be undefined
+//*/ #define MBEDTLS_PLATFORM_STD_EXIT_SUCCESS       0 /**< Default exit value to use, can be
+//undefined */ #define MBEDTLS_PLATFORM_STD_EXIT_FAILURE       1 /**< Default exit value to use, can
+//be undefined */ #define MBEDTLS_PLATFORM_STD_NV_SEED_READ   mbedtls_platform_std_nv_seed_read /**<
+//Default nv_seed_read function to use, can be undefined */ #define
+//MBEDTLS_PLATFORM_STD_NV_SEED_WRITE  mbedtls_platform_std_nv_seed_write /**< Default nv_seed_write
+//function to use, can be undefined */ #define MBEDTLS_PLATFORM_STD_NV_SEED_FILE  "seedfile" /**<
+//Seed file to read/write with default implementation */
 
 /* To use the following function macros, MBEDTLS_PLATFORM_C must be enabled. */
 /* MBEDTLS_PLATFORM_XXX_MACRO and MBEDTLS_PLATFORM_XXX_ALT cannot both be defined */
-//#define MBEDTLS_PLATFORM_CALLOC_MACRO        calloc /**< Default allocator macro to use, can be undefined. See MBEDTLS_PLATFORM_STD_CALLOC for requirements. */
-//#define MBEDTLS_PLATFORM_FREE_MACRO            free /**< Default free macro to use, can be undefined. See MBEDTLS_PLATFORM_STD_FREE for requirements. */
-//#define MBEDTLS_PLATFORM_EXIT_MACRO            exit /**< Default exit macro to use, can be undefined */
-//#define MBEDTLS_PLATFORM_SETBUF_MACRO      setbuf /**< Default setbuf macro to use, can be undefined */
-//#define MBEDTLS_PLATFORM_TIME_MACRO            time /**< Default time macro to use, can be undefined. MBEDTLS_HAVE_TIME must be enabled */
-//#define MBEDTLS_PLATFORM_TIME_TYPE_MACRO       time_t /**< Default time macro to use, can be undefined. MBEDTLS_HAVE_TIME must be enabled */
-//#define MBEDTLS_PLATFORM_FPRINTF_MACRO      fprintf /**< Default fprintf macro to use, can be undefined */
-//#define MBEDTLS_PLATFORM_PRINTF_MACRO        printf /**< Default printf macro to use, can be undefined */
+//#define MBEDTLS_PLATFORM_CALLOC_MACRO        calloc /**< Default allocator macro to use, can be
+//undefined. See MBEDTLS_PLATFORM_STD_CALLOC for requirements. */ #define
+//MBEDTLS_PLATFORM_FREE_MACRO            free /**< Default free macro to use, can be undefined. See
+//MBEDTLS_PLATFORM_STD_FREE for requirements. */ #define MBEDTLS_PLATFORM_EXIT_MACRO            exit
+///**< Default exit macro to use, can be undefined */ #define MBEDTLS_PLATFORM_SETBUF_MACRO setbuf
+///**< Default setbuf macro to use, can be undefined */ #define MBEDTLS_PLATFORM_TIME_MACRO time
+///**< Default time macro to use, can be undefined. MBEDTLS_HAVE_TIME must be enabled */ #define
+//MBEDTLS_PLATFORM_TIME_TYPE_MACRO       time_t /**< Default time macro to use, can be undefined.
+//MBEDTLS_HAVE_TIME must be enabled */ #define MBEDTLS_PLATFORM_FPRINTF_MACRO      fprintf /**<
+//Default fprintf macro to use, can be undefined */ #define MBEDTLS_PLATFORM_PRINTF_MACRO printf
+///**< Default printf macro to use, can be undefined */
 /* Note: your snprintf must correctly zero-terminate the buffer! */
-//#define MBEDTLS_PLATFORM_SNPRINTF_MACRO    snprintf /**< Default snprintf macro to use, can be undefined */
-//#define MBEDTLS_PLATFORM_VSNPRINTF_MACRO    vsnprintf /**< Default vsnprintf macro to use, can be undefined */
-//#define MBEDTLS_PLATFORM_NV_SEED_READ_MACRO   mbedtls_platform_std_nv_seed_read /**< Default nv_seed_read function to use, can be undefined */
-//#define MBEDTLS_PLATFORM_NV_SEED_WRITE_MACRO  mbedtls_platform_std_nv_seed_write /**< Default nv_seed_write function to use, can be undefined */
-//#define MBEDTLS_PLATFORM_MS_TIME_TYPE_MACRO   int64_t //#define MBEDTLS_PLATFORM_MS_TIME_TYPE_MACRO   int64_t /**< Default milliseconds time macro to use, can be undefined. MBEDTLS_HAVE_TIME must be enabled. It must be signed, and at least 64 bits. If it is changed from the default, MBEDTLS_PRINTF_MS_TIME must be updated to match.*/
-//#define MBEDTLS_PRINTF_MS_TIME    PRId64 /**< Default fmt for printf. That's avoid compiler warning if mbedtls_ms_time_t is redefined */
+//#define MBEDTLS_PLATFORM_SNPRINTF_MACRO    snprintf /**< Default snprintf macro to use, can be
+//undefined */ #define MBEDTLS_PLATFORM_VSNPRINTF_MACRO    vsnprintf /**< Default vsnprintf macro to
+//use, can be undefined */ #define MBEDTLS_PLATFORM_NV_SEED_READ_MACRO
+//mbedtls_platform_std_nv_seed_read /**< Default nv_seed_read function to use, can be undefined */
+//#define MBEDTLS_PLATFORM_NV_SEED_WRITE_MACRO  mbedtls_platform_std_nv_seed_write /**< Default
+//nv_seed_write function to use, can be undefined */ #define MBEDTLS_PLATFORM_MS_TIME_TYPE_MACRO
+//int64_t //#define MBEDTLS_PLATFORM_MS_TIME_TYPE_MACRO   int64_t /**< Default milliseconds time
+//macro to use, can be undefined. MBEDTLS_HAVE_TIME must be enabled. It must be signed, and at least
+//64 bits. If it is changed from the default, MBEDTLS_PRINTF_MS_TIME must be updated to match.*/
+//#define MBEDTLS_PRINTF_MS_TIME    PRId64 /**< Default fmt for printf. That's avoid compiler
+//warning if mbedtls_ms_time_t is redefined */
 
 /** \def MBEDTLS_PLATFORM_DEV_RANDOM
  *
@@ -4271,7 +4290,8 @@
 //#define MBEDTLS_PSA_STATIC_KEY_SLOT_BUFFER_SIZE       256
 
 /* RSA OPTIONS */
-//#define MBEDTLS_RSA_GEN_KEY_MIN_BITS            1024 /**<  Minimum RSA key size that can be generated in bits (Minimum possible value is 128 bits) */
+//#define MBEDTLS_RSA_GEN_KEY_MIN_BITS            1024 /**<  Minimum RSA key size that can be
+//generated in bits (Minimum possible value is 128 bits) */
 
 /* SSL Cache options */
 //#define MBEDTLS_SSL_CACHE_DEFAULT_TIMEOUT       86400 /**< 1 day  */
@@ -4367,8 +4387,9 @@
  */
 //#define MBEDTLS_SSL_DTLS_MAX_BUFFERING             32768
 
-//#define MBEDTLS_PSK_MAX_LEN               32 /**< Max size of TLS pre-shared keys, in bytes (default 256 or 384 bits) */
-//#define MBEDTLS_SSL_COOKIE_TIMEOUT        60 /**< Default expiration delay of DTLS cookies, in seconds if HAVE_TIME, or in number of cookies issued */
+//#define MBEDTLS_PSK_MAX_LEN               32 /**< Max size of TLS pre-shared keys, in bytes
+//(default 256 or 384 bits) */ #define MBEDTLS_SSL_COOKIE_TIMEOUT        60 /**< Default expiration
+//delay of DTLS cookies, in seconds if HAVE_TIME, or in number of cookies issued */
 
 /**
  * Complete list of ciphersuites to use, in order of preference.
@@ -4382,7 +4403,8 @@
  *
  * The value below is only an example, not the default.
  */
-//#define MBEDTLS_SSL_CIPHERSUITES MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+//#define MBEDTLS_SSL_CIPHERSUITES
+//MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 
 /**
  * \def MBEDTLS_SSL_MAX_EARLY_DATA_SIZE
@@ -4440,7 +4462,8 @@
 //#define MBEDTLS_SSL_TLS1_3_DEFAULT_NEW_SESSION_TICKETS 1
 
 /* X509 options */
-//#define MBEDTLS_X509_MAX_INTERMEDIATE_CA   8   /**< Maximum number of intermediate CAs in a verification chain. */
-//#define MBEDTLS_X509_MAX_FILE_PATH_LEN     512 /**< Maximum length of a path/filename string in bytes including the null terminator character ('\0'). */
+//#define MBEDTLS_X509_MAX_INTERMEDIATE_CA   8   /**< Maximum number of intermediate CAs in a
+//verification chain. */ #define MBEDTLS_X509_MAX_FILE_PATH_LEN     512 /**< Maximum length of a
+//path/filename string in bytes including the null terminator character ('\0'). */
 
 /** \} name SECTION: Module configuration options */
