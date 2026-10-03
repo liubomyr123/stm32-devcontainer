@@ -21,7 +21,7 @@ bool Aes128CcmCipher::init()
     int rc = mbedtls_ccm_setkey(&ctx_,                  //
                                 MBEDTLS_CIPHER_ID_AES,  //
                                 aes_key_,               //
-                                kKeyLength * 8);
+                                aes_key_length * 8);
     aes_key_ = nullptr;
 
     if (rc != 0)
@@ -50,12 +50,12 @@ bool Aes128CcmCipher::encrypt(const uint8_t* plaintext, size_t length, uint8_t* 
     int rc = mbedtls_ccm_encrypt_and_tag(&ctx_,               //
                                          length,              //
                                          last_nonce_.data(),  //
-                                         kIvLength,           //
+                                         nonce_length,        //
                                          nullptr, 0,          //
                                          plaintext,           //
                                          out_ciphertext,      //
                                          last_tag_.data(),    //
-                                         kTagLength           //
+                                         tag_length           //
     );
 
     if (rc != 0)
@@ -69,19 +69,19 @@ bool Aes128CcmCipher::encrypt(const uint8_t* plaintext, size_t length, uint8_t* 
     return true;
 }
 
-bool Aes128CcmCipher::decrypt(const std::array<uint8_t, kIvLength>& nonce,
+bool Aes128CcmCipher::decrypt(const std::array<uint8_t, nonce_length>& nonce,
                               const uint8_t* ciphertext, size_t length,
-                              const std::array<uint8_t, kTagLength>& tag, uint8_t* out_plaintext)
+                              const std::array<uint8_t, tag_length>& tag, uint8_t* out_plaintext)
 {
     int rc = mbedtls_ccm_auth_decrypt(&ctx_,          //
                                       length,         //
                                       nonce.data(),   //
-                                      kIvLength,      //
+                                      nonce_length,   //
                                       nullptr, 0,     //
                                       ciphertext,     //
                                       out_plaintext,  //
                                       tag.data(),     //
-                                      kTagLength      //
+                                      tag_length      //
     );
 
     if (rc != 0)
