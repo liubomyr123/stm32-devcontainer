@@ -109,7 +109,7 @@ extern "C" void RadioTask(void* argument)
     RadioState loopState = RadioState::TxMode;
     while (true)
     {
-        LOG_INFO("RADIO", "Before goStandbyI() = %d", static_cast<int>(nrf.getCurrentState()));
+        // LOG_INFO("RADIO", "Before goStandbyI() = %d", static_cast<int>(nrf.getCurrentState()));
         result = nrf.goStandbyI();
         if (!result)
         {
@@ -117,9 +117,9 @@ extern "C" void RadioTask(void* argument)
             continue;
         }
 
-        RadioState txState = nrf.getCurrentState();
-        LOG_INFO("RADIO", "After goStandbyI() = %d (expect StandbyI = %d)",
-                 static_cast<int>(txState), static_cast<int>(RadioState::StandbyI));
+        // RadioState txState = nrf.getCurrentState();
+        // LOG_INFO("RADIO", "After goStandbyI() = %d (expect StandbyI = %d)",
+        //          static_cast<int>(txState), static_cast<int>(RadioState::StandbyI));
 
         switch (loopState)
         {
@@ -194,7 +194,7 @@ extern "C" void RadioTask(void* argument)
 
                 LOG_INFO("RADIO", "OK: RX_DR, received=%d", received_cmd.counter);
                 tx_counter = received_cmd.counter + 1;
-                LOG_INFO("RADIO", "Next tx_counter=%d", tx_counter);
+                // LOG_INFO("RADIO", "Next tx_counter=%d", tx_counter);
                 loopState = RadioState::TxMode;
             }
             if ((status & STATUS_TX_DS_BIT) != 0)
