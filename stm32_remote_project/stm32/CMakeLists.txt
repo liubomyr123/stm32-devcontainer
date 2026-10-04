@@ -46,7 +46,7 @@ add_executable(${CMAKE_PROJECT_NAME})
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
-target_compile_options(STM32_Drivers PRIVATE -Wno-unused-parameter)
+target_compile_options(STM32_Drivers PRIVATE -Wno-unused-parameter -Wno-pedantic)
 target_compile_options(FatFs PRIVATE -Wno-unused-parameter)
 
 set_source_files_properties(

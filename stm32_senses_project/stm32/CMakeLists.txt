@@ -46,6 +46,12 @@ add_executable(${CMAKE_PROJECT_NAME})
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
+target_compile_options(STM32_Drivers PRIVATE -Wno-unused-parameter)
+
+set_source_files_properties(
+    ${CMAKE_SOURCE_DIR}/Core/Src/freertos.c
+    PROPERTIES COMPILE_OPTIONS -Wno-unused-parameter
+)
 
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
@@ -63,6 +69,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     ${APP_DIR}
     ${APP_DIR}/include
+    ${APP_DIR}/third_party/mbedtls/include
+    ${APP_DIR}/third_party/mbedtls/library
 )
 
 # Add project symbols (macros)

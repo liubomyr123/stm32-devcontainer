@@ -175,6 +175,9 @@ extern "C" void RadioTask(void* argument)
                     continue;
                 }
 
+                // "Write 1 to clear bit" (Table 28)
+                nrf.writeRegister(REG_STATUS, STATUS_RX_DR_BIT);
+
                 PingPongCommand received_cmd{};
                 if (!rx_cipher.unpackAndDecrypt(packet, received_cmd))
                 {
@@ -189,8 +192,6 @@ extern "C" void RadioTask(void* argument)
                     continue;
                 }
 
-                // "Write 1 to clear bit" (Table 28)
-                nrf.writeRegister(REG_STATUS, STATUS_RX_DR_BIT);
                 LOG_INFO("RADIO", "OK: RX_DR, received=%d", received_cmd.counter);
                 tx_counter = received_cmd.counter + 1;
                 LOG_INFO("RADIO", "Next tx_counter=%d", tx_counter);
@@ -199,7 +200,7 @@ extern "C" void RadioTask(void* argument)
             if ((status & STATUS_TX_DS_BIT) != 0)
             {
                 LOG_INFO("RADIO", "OK: TX_DS, sent=%d", tx_counter);
-                nrf.writeRegister(REG_STATUS, status);
+                nrf.writeRegister(REG_STATUS, STATUS_TX_DS_BIT);
                 loopState = RadioState::RxMode;
             }
             continue;
