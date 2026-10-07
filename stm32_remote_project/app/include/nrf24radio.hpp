@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 
 #include "cmsis_os2.h"
 #include "include/logger.hpp"
@@ -147,13 +148,16 @@ class Nrf24Radio
     uint8_t writeRegister(uint8_t reg, uint8_t value) const;
 
     Nrf24Radio(SPI_HandleTypeDef* hspi, GPIO_TypeDef* csnPort, uint16_t csnPin,
-               GPIO_TypeDef* cePort, uint16_t cePin, Direction direction)
+               GPIO_TypeDef* cePort, uint16_t cePin, Direction direction, uint32_t device_id,
+               uint32_t device_random)
         : hspi_(hspi),
           csnPort_(csnPort),
           csnPin_(csnPin),
           cePort_(cePort),
           cePin_(cePin),
-          direction_(direction)
+          direction_(direction),
+          device_id_(device_id),
+          device_random_(device_random)
     {
     }
 
@@ -175,6 +179,14 @@ class Nrf24Radio
     bool setChannel(uint8_t channel);
     uint8_t sendCommand(uint8_t command) const;
     bool enableAutoAck(uint8_t pipeBit) const;
+    uint32_t getDeviceRandom() const
+    {
+        return device_random_;
+    }
+    uint32_t getDeviceId() const
+    {
+        return device_id_;
+    }
 
    private:
     static constexpr const char* TAG = "NRF24";
@@ -200,4 +212,6 @@ class Nrf24Radio
     Direction direction_;
     // By default: [RF_DR_LOW, RF_DR_HIGH] = [0, 1] = '01' = 2Mbps
     DataRate dataRate_ = DataRate::Mbps2;
+    uint32_t device_id_;
+    uint32_t device_random_;
 };

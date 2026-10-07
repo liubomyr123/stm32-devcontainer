@@ -37,13 +37,13 @@ bool Aes128CcmCipher::init()
 
 bool Aes128CcmCipher::encrypt(const uint8_t* plaintext, size_t length, uint8_t* out_ciphertext)
 {
-    last_nonce_[0] = static_cast<uint8_t>(tx_counter_ >> 24);
-    last_nonce_[1] = static_cast<uint8_t>(tx_counter_ >> 16);
-    last_nonce_[2] = static_cast<uint8_t>(tx_counter_ >> 8);
-    last_nonce_[3] = static_cast<uint8_t>(tx_counter_);
-    last_nonce_[4] = 0;
-    last_nonce_[5] = 0;
-    last_nonce_[6] = 0;
+    last_nonce_[0] = 0;
+    last_nonce_[1] = 0;
+    last_nonce_[2] = 0;
+    last_nonce_[3] = static_cast<uint8_t>(tx_counter_ >> 24);
+    last_nonce_[4] = static_cast<uint8_t>(tx_counter_ >> 16);
+    last_nonce_[5] = static_cast<uint8_t>(tx_counter_ >> 8);
+    last_nonce_[6] = static_cast<uint8_t>(tx_counter_);
 
     tx_counter_++;
 

@@ -1,3 +1,6 @@
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 
 #include "../include/aes128ccm_cipher.hpp"
@@ -46,10 +49,57 @@ extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
 }
 
+inline uint32_t getDeviceId()
+{
+    const std::array<uint32_t, 3> words = {HAL_GetUIDw0(), HAL_GetUIDw1(), HAL_GetUIDw2()};
+
+    uint32_t hash = 2166136261U;  // FNV offset basis
+    for (uint32_t word : words)
+    {
+        for (uint32_t i = 0; i < 4; ++i)
+        {
+            hash ^= (word >> (8 * i)) & 0xFFU;
+            hash *= 16777619U;  // FNV prime
+        }
+    }
+    return hash;
+}
+
+class SoftRandom
+{
+   public:
+    explicit SoftRandom(uint32_t seed) : state_(seed != 0 ? seed : 0x6D2B79F5U)
+    {
+    }
+
+    uint32_t next()
+    {
+        state_ ^= state_ << 13;
+        state_ ^= state_ >> 17;
+        state_ ^= state_ << 5;
+        return state_;
+    }
+
+   private:
+    uint32_t state_;
+};
+
+enum class LoopState
+{
+    IDLE,
+    BIND_REQ,
+    BIND_RESP,
+    BIND_CONFIRM,
+    BIND_ACK,
+    PING_PONG,
+};
+
 extern "C" void RadioTask(void* argument)
 {
     (void)argument;
     LOG_INFO("RADIO", "Task started");
+
+    SoftRandom rng(getDeviceId() ^ HAL_GetTick());
 
     Aes128CcmCipher tx_cipher(TX_KEY.data());
     Aes128CcmCipher rx_cipher(RX_KEY.data());
@@ -70,7 +120,9 @@ extern "C" void RadioTask(void* argument)
                    NRF_CSN_PIN,  //
                    NRF_CE_PORT,
                    NRF_CE_PIN,  //
-                   Direction::HalfDuplex};
+                   Direction::HalfDuplex,
+                   getDeviceId(),
+                   rng.next()};
 
     if (!nrf.init())
     {
@@ -106,10 +158,65 @@ extern "C" void RadioTask(void* argument)
         vTaskDelete(nullptr);
     }
 
-    RadioState loopState = RadioState::TxMode;
+    RadioState state = RadioState::TxMode;
+    LoopState loopState = LoopState::IDLE;
     while (true)
     {
-        // LOG_INFO("RADIO", "Before goStandbyI() = %d", static_cast<int>(nrf.getCurrentState()));
+        /*
+         * 1) BIND_REQ      пульт -> машинка    відкритий
+         *      [прапорець 0xA1][опкод 1][remote_id 4][R1 4]                        = 9 байт
+         *
+         * 2) BIND_RESP     машинка -> пульт    відкритий
+         *      [прапорець 0xA1][опкод 1][car_id 4][R2 4][ехо R1 4]                 = 13 байт
+         *
+         * 3) BIND_CONFIRM  пульт -> машинка    зашифрований ключем key_remote_to_car
+         *      [прапорець 0xA2][nonce 7] [опкод 1] [tag 4]                         = 7 + 1 + 4 = 12
+         * байт
+         *
+         * 4) BIND_ACK      машинка -> пульт    зашифрований ключем key_car_to_remote
+         *      [прапорець 0xA2][nonce 7] [опкод 1] [tag 4]                         = 7 + 1 + 4 = 12
+         * байт
+         *
+         * 5) PING_PONG     в обидва боки       зашифрований ключем свого напрямку
+         *      [прапорець 0xA2][nonce 7] [опкод 1][counter 1] [tag 4]              = 7 + 2 + 4 = 13
+         * байт
+         */
+        std::array<uint8_t, 16> tx_packet{};
+        std::array<uint8_t, 16> rx_packet{};
+        switch (loopState)
+        {
+            case LoopState::IDLE:
+            {
+                BindReqCommand bind_req_cmd{};
+                bind_req_cmd.remoteId = nrf.getDeviceId();
+                bind_req_cmd.remoteRandom = nrf.getDeviceRandom();
+
+                tx_packet[0] = static_cast<uint8_t>(FrameType::Plain);
+                std::memcpy(tx_packet.data() + 1, &bind_req_cmd, sizeof(bind_req_cmd));
+                break;
+            }
+            case LoopState::BIND_REQ:
+            {
+                break;
+            }
+            case LoopState::BIND_CONFIRM:
+            {
+                break;
+            }
+            case LoopState::BIND_ACK:
+            {
+                break;
+            }
+            case LoopState::PING_PONG:
+            {
+                break;
+            }
+            default:
+            {
+                break;
+            }
+        }
+
         result = nrf.goStandbyI();
         if (!result)
         {
@@ -117,24 +224,20 @@ extern "C" void RadioTask(void* argument)
             continue;
         }
 
-        // RadioState txState = nrf.getCurrentState();
-        // LOG_INFO("RADIO", "After goStandbyI() = %d (expect StandbyI = %d)",
-        //          static_cast<int>(txState), static_cast<int>(RadioState::StandbyI));
-
-        switch (loopState)
+        switch (state)
         {
             case RadioState::TxMode:
             {
-                PingPongCommand ping_pong_cmd{};
-                ping_pong_cmd.counter = tx_counter;
+                // PingPongCommand ping_pong_cmd{};
+                // ping_pong_cmd.counter = tx_counter;
 
-                Aes128CcmCipher::Packet<PingPongCommand> packet{};
-                if (!tx_cipher.encryptAndPack(ping_pong_cmd, packet))
-                {
-                    continue;
-                }
+                // Aes128CcmCipher::Packet<PingPongCommand> packet{};
+                // if (!tx_cipher.encryptAndPack(ping_pong_cmd, packet))
+                // {
+                //     continue;
+                // }
 
-                if (!nrf.transmit(packet.data(), static_cast<uint8_t>(packet.size())))
+                if (!nrf.transmit(tx_packet.data(), static_cast<uint8_t>(tx_packet.size())))
                 {
                     continue;
                 }
@@ -168,53 +271,138 @@ extern "C" void RadioTask(void* argument)
 
             if ((status & STATUS_RX_DR_BIT) != 0)
             {
-                Aes128CcmCipher::Packet<PingPongCommand> packet{};
-                if (!nrf.receive(packet.data(), static_cast<uint8_t>(packet.size())))
+                if (!nrf.receive(rx_packet.data(), static_cast<uint8_t>(rx_packet.size())))
                 {
                     LOG_ERROR("RADIO", "receive() failed unexpectedly despite RX_DR set");
                     continue;
                 }
 
+                switch (state)
+                {
+                    case RadioState::TxMode:
+                    {
+                        switch (loopState)
+                        {
+                            case LoopState::IDLE:
+                            {
+                                auto frame_type = static_cast<FrameType>(rx_packet.at(0));
+                                switch (frame_type)
+                                {
+                                    case FrameType::Plain:
+                                    {
+                                        CommandOpcode opcode{};
+                                        std::memcpy(&opcode, rx_packet.data() + sizeof(FrameType),
+                                                    sizeof(opcode));
+
+                                        switch (opcode)
+                                        {
+                                            case CommandOpcode::BindResp:
+                                            {
+                                                BindRespCommand bind_res_cmd{};
+                                                std::memcpy(&bind_res_cmd,
+                                                            rx_packet.data() + sizeof(FrameType),
+                                                            sizeof(BindRespCommand));
+                                                LOG_INFO("RADIO",
+                                                         "car_id=%d | carRandom=%d | "
+                                                         "remoteRandomEcho=%d",
+                                                         bind_res_cmd.carId, bind_res_cmd.carRandom,
+                                                         bind_res_cmd.remoteRandomEcho);
+                                                break;
+                                            }
+                                            default:
+                                            {
+                                                //
+                                                break;
+                                            }
+                                        }
+                                        break;
+                                    }
+                                    case FrameType::Encrypted:
+                                    {
+                                        // Error, we expect plain type of packet
+                                        break;
+                                    }
+                                    default:
+                                    {
+                                        // Error, we expect plain type of packet
+                                        break;
+                                    }
+                                }
+
+                                break;
+                            }
+                            case LoopState::BIND_REQ:
+                            {
+                                break;
+                            }
+                            case LoopState::BIND_CONFIRM:
+                            {
+                                break;
+                            }
+                            case LoopState::BIND_ACK:
+                            {
+                                break;
+                            }
+                            case LoopState::PING_PONG:
+                            {
+                                break;
+                            }
+                            default:
+                            {
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                // Aes128CcmCipher::Packet<PingPongCommand> packet{};
+                // if (!nrf.receive(packet.data(), static_cast<uint8_t>(packet.size())))
+                // {
+                //     LOG_ERROR("RADIO", "receive() failed unexpectedly despite RX_DR set");
+                //     continue;
+                // }
+
                 // "Write 1 to clear bit" (Table 28)
                 nrf.writeRegister(REG_STATUS, STATUS_RX_DR_BIT);
 
-                PingPongCommand received_cmd{};
-                if (!rx_cipher.unpackAndDecrypt(packet, received_cmd))
-                {
-                    LOG_WARNING("RADIO", "unpackAndDecrypt failed — пакет відкинуто");
-                    continue;
-                }
+                // PingPongCommand received_cmd{};
+                // if (!rx_cipher.unpackAndDecrypt(packet, received_cmd))
+                // {
+                //     LOG_WARNING("RADIO", "unpackAndDecrypt failed — пакет відкинуто");
+                //     continue;
+                // }
 
-                if (received_cmd.opcode != CommandOpcode::PingPong)
-                {
-                    LOG_WARNING("RADIO", "Unexpected opcode=%d",
-                                static_cast<int>(received_cmd.opcode));
-                    continue;
-                }
+                // if (received_cmd.opcode != CommandOpcode::PingPong)
+                // {
+                //     LOG_WARNING("RADIO", "Unexpected opcode=%d",
+                //                 static_cast<int>(received_cmd.opcode));
+                //     continue;
+                // }
 
-                LOG_INFO("RADIO", "OK: RX_DR, received=%d", received_cmd.counter);
-                tx_counter = received_cmd.counter + 1;
+                // LOG_INFO("RADIO", "OK: RX_DR, received=%d", received_cmd.counter);
+                // tx_counter = received_cmd.counter + 1;
                 // LOG_INFO("RADIO", "Next tx_counter=%d", tx_counter);
-                loopState = RadioState::TxMode;
+                state = RadioState::TxMode;
             }
             if ((status & STATUS_TX_DS_BIT) != 0)
             {
                 LOG_INFO("RADIO", "OK: TX_DS, sent=%d", tx_counter);
                 nrf.writeRegister(REG_STATUS, STATUS_TX_DS_BIT);
-                loopState = RadioState::RxMode;
+                state = RadioState::RxMode;
             }
             continue;
         }
 
         LOG_ERROR("RADIO", "FAILED: no IRQ within %lums", IRQ_WAIT_TIMEOUT_MS);
 
-        if (loopState == RadioState::TxMode)
+        if (state == RadioState::TxMode)
         {
             nrf.sendCommand(FLUSH_TX);
         }
-        if (loopState == RadioState::RxMode)
+        if (state == RadioState::RxMode)
         {
-            loopState = RadioState::TxMode;
+            state = RadioState::TxMode;
         }
     }
 }
