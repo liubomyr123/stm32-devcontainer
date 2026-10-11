@@ -17,7 +17,9 @@ class Aes128CcmCipher
 
     bool init();
 
-    Aes128CcmCipher(const uint8_t* aes_key);
+    Aes128CcmCipher(
+        // const uint8_t* aes_key
+    );
     ~Aes128CcmCipher();
 
     Aes128CcmCipher(const Aes128CcmCipher&) = delete;
@@ -26,6 +28,7 @@ class Aes128CcmCipher
     Aes128CcmCipher& operator=(Aes128CcmCipher&&) = delete;
 
     bool encrypt(const uint8_t* plaintext, size_t length, uint8_t* out_ciphertext);
+    bool setAesKey(const uint8_t* aes_key);
 
     template <typename CommandT>
     using Packet = std::array<uint8_t, nonce_length + sizeof(CommandT) + tag_length>;

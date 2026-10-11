@@ -1,6 +1,9 @@
 #include "aes128ccm_cipher.hpp"
 
-Aes128CcmCipher::Aes128CcmCipher(const uint8_t* aes_key) : aes_key_(aes_key)
+Aes128CcmCipher::Aes128CcmCipher(
+    // const uint8_t* aes_key
+)
+// : aes_key_(aes_key)
 {
     mbedtls_ccm_init(&ctx_);
 }
@@ -8,6 +11,16 @@ Aes128CcmCipher::Aes128CcmCipher(const uint8_t* aes_key) : aes_key_(aes_key)
 Aes128CcmCipher::~Aes128CcmCipher()
 {
     mbedtls_ccm_free(&ctx_);
+}
+
+bool Aes128CcmCipher::setAesKey(const uint8_t* aes_key)
+{
+    if (aes_key == nullptr)
+    {
+        return false;
+    }
+    aes_key_ = aes_key;
+    return true;
 }
 
 bool Aes128CcmCipher::init()

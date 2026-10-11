@@ -25,15 +25,15 @@ constexpr uint32_t IRQ_WAIT_TIMEOUT_MS = 50;
 // Спільний RF-фільтр-ключ для комунікації пульт↔senses-плата (MVP, один канал)
 constexpr std::array<uint8_t, 5> SHARED_RF_FILTER_KEY = {0xE7, 0xE7, 0xE7, 0xE7, 0xE7};
 
-constexpr std::array<uint8_t, Aes128CcmCipher::aes_key_length> TX_KEY = {
-    'M', 'y', 'S', 'e', 'c', 'r', 'e', 't',  //
-    'T', 'e', 's', 't', 'K', 'e', 'y', '1'   //
-};
+// constexpr std::array<uint8_t, Aes128CcmCipher::aes_key_length> TX_KEY = {
+//     'M', 'y', 'S', 'e', 'c', 'r', 'e', 't',  //
+//     'T', 'e', 's', 't', 'K', 'e', 'y', '1'   //
+// };
 
-constexpr std::array<uint8_t, Aes128CcmCipher::aes_key_length> RX_KEY = {
-    'M', 'y', 'S', 'e', 'c', 'r', 'e', 't',  //
-    'T', 'e', 's', 't', 'K', 'e', 'y', '2'   //
-};
+// constexpr std::array<uint8_t, Aes128CcmCipher::aes_key_length> RX_KEY = {
+//     'M', 'y', 'S', 'e', 'c', 'r', 'e', 't',  //
+//     'T', 'e', 's', 't', 'K', 'e', 'y', '2'   //
+// };
 
 // Робочий канал — подалі від типових WiFi-каналів (1/6/11)
 // F0 = 2400 + 100 = 2500 MHz
@@ -99,19 +99,24 @@ extern "C" void RadioTask(void* argument)
     (void)argument;
     LOG_INFO("RADIO", "Task started");
 
-    SoftRandom rng(getDeviceId() ^ HAL_GetTick());
+    uint32_t device_id = getDeviceId();
+    SoftRandom rng(device_id ^ HAL_GetTick());
+    uint32_t device_random = rng.next();
 
-    Aes128CcmCipher tx_cipher(TX_KEY.data());
-    Aes128CcmCipher rx_cipher(RX_KEY.data());
+    // Aes128CcmCipher tx_cipher(TX_KEY.data());
+    // Aes128CcmCipher rx_cipher(RX_KEY.data());
 
-    if (!tx_cipher.init())
-    {
-        vTaskDelete(nullptr);
-    }
-    if (!rx_cipher.init())
-    {
-        vTaskDelete(nullptr);
-    }
+    // if (!tx_cipher.init())
+    // {
+    //     vTaskDelete(nullptr);
+    // }
+    // if (!rx_cipher.init())
+    // {
+    //     vTaskDelete(nullptr);
+    // }
+
+    Aes128CcmCipher tx_cipher;
+    Aes128CcmCipher rx_cipher;
 
     uint8_t tx_counter = 0;
 
@@ -121,7 +126,7 @@ extern "C" void RadioTask(void* argument)
                    NRF_CE_PORT,
                    NRF_CE_PIN,  //
                    Direction::HalfDuplex,
-                   getDeviceId(),
+                   device_id,
                    rng.next()};
 
     if (!nrf.init())
@@ -159,34 +164,22 @@ extern "C" void RadioTask(void* argument)
     }
 
     RadioState state = RadioState::TxMode;
-    LoopState loopState = LoopState::IDLE;
+    LoopState loopState = LoopState::BIND_REQ;
     while (true)
     {
-        /*
-         * 1) BIND_REQ      пульт -> машинка    відкритий
-         *      [прапорець 0xA1][опкод 1][remote_id 4][R1 4]                        = 9 байт
-         *
-         * 2) BIND_RESP     машинка -> пульт    відкритий
-         *      [прапорець 0xA1][опкод 1][car_id 4][R2 4][ехо R1 4]                 = 13 байт
-         *
-         * 3) BIND_CONFIRM  пульт -> машинка    зашифрований ключем key_remote_to_car
-         *      [прапорець 0xA2][nonce 7] [опкод 1] [tag 4]                         = 7 + 1 + 4 = 12
-         * байт
-         *
-         * 4) BIND_ACK      машинка -> пульт    зашифрований ключем key_car_to_remote
-         *      [прапорець 0xA2][nonce 7] [опкод 1] [tag 4]                         = 7 + 1 + 4 = 12
-         * байт
-         *
-         * 5) PING_PONG     в обидва боки       зашифрований ключем свого напрямку
-         *      [прапорець 0xA2][nonce 7] [опкод 1][counter 1] [tag 4]              = 7 + 2 + 4 = 13
-         * байт
-         */
         std::array<uint8_t, 16> tx_packet{};
         std::array<uint8_t, 16> rx_packet{};
         switch (loopState)
         {
             case LoopState::IDLE:
             {
+                break;
+            }
+            case LoopState::BIND_REQ:
+            {
+                tx_packet.fill(0);
+                rx_packet.fill(0);
+
                 BindReqCommand bind_req_cmd{};
                 bind_req_cmd.remoteId = nrf.getDeviceId();
                 bind_req_cmd.remoteRandom = nrf.getDeviceRandom();
@@ -195,16 +188,27 @@ extern "C" void RadioTask(void* argument)
                 std::memcpy(tx_packet.data() + 1, &bind_req_cmd, sizeof(bind_req_cmd));
                 break;
             }
-            case LoopState::BIND_REQ:
+            case LoopState::BIND_RESP:
             {
+                tx_packet.fill(0);
+                rx_packet.fill(0);
                 break;
             }
             case LoopState::BIND_CONFIRM:
             {
+                tx_packet.fill(0);
+                rx_packet.fill(0);
+
+                BindConfirmCommand bind_confirm_cmd{};
+
+                tx_packet[0] = static_cast<uint8_t>(FrameType::Encrypted);
+                std::memcpy(tx_packet.data() + 1, &bind_confirm_cmd, sizeof(bind_confirm_cmd));
                 break;
             }
             case LoopState::BIND_ACK:
             {
+                tx_packet.fill(0);
+                rx_packet.fill(0);
                 break;
             }
             case LoopState::PING_PONG:
@@ -228,6 +232,38 @@ extern "C" void RadioTask(void* argument)
         {
             case RadioState::TxMode:
             {
+                auto frame_type = static_cast<FrameType>(tx_packet.at(0));
+
+                switch (frame_type)
+                {
+                    case FrameType::Plain:
+                    {
+                        if (!nrf.transmit(tx_packet.data(), static_cast<uint8_t>(tx_packet.size())))
+                        {
+                            continue;
+                        }
+                        break;
+                    }
+                    case FrameType::Encrypted:
+                    {
+                        std::array<uint8_t, 16> encrypted_tx_packet{};
+                        if (!tx_cipher.encrypt(tx_packet.data(), tx_packet.size(),
+                                               encrypted_tx_packet.data()))
+                        {
+                            continue;
+                        }
+                        if (!nrf.transmit(encrypted_tx_packet.data(),
+                                          static_cast<uint8_t>(encrypted_tx_packet.size())))
+                        {
+                            continue;
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        break;
+                    }
+                }
                 // PingPongCommand ping_pong_cmd{};
                 // ping_pong_cmd.counter = tx_counter;
 
@@ -281,9 +317,21 @@ extern "C" void RadioTask(void* argument)
                 {
                     case RadioState::TxMode:
                     {
+                        break;
+                    }
+                    case RadioState::RxMode:
+                    {
                         switch (loopState)
                         {
                             case LoopState::IDLE:
+                            {
+                                break;
+                            }
+                            case LoopState::BIND_REQ:
+                            {
+                                break;
+                            }
+                            case LoopState::BIND_RESP:
                             {
                                 auto frame_type = static_cast<FrameType>(rx_packet.at(0));
                                 switch (frame_type)
@@ -307,6 +355,41 @@ extern "C" void RadioTask(void* argument)
                                                          "remoteRandomEcho=%d",
                                                          bind_res_cmd.carId, bind_res_cmd.carRandom,
                                                          bind_res_cmd.remoteRandomEcho);
+                                                loopState = LoopState::BIND_CONFIRM;
+
+                                                // crating key_remote_to_car and init cipher
+                                                //  [remote_id 4][car_id 4][R1 4][R2 4], де блок[0]
+                                                //  ^= маркер напрямку:
+
+                                                std::array<uint8_t, 16> aes_key{};
+                                                // 4
+                                                std::memcpy(aes_key.data(), &device_id,
+                                                            sizeof(device_id));
+                                                // 4
+                                                std::memcpy(aes_key.data() + sizeof(device_id),
+                                                            rx_packet.data() + sizeof(FrameType) +
+                                                                sizeof(CommandOpcode) +
+                                                                sizeof(BindRespCommand::carId),
+                                                            sizeof(BindRespCommand::carId));
+                                                // 4
+                                                std::memcpy(aes_key.data() + sizeof(device_id) +
+                                                                sizeof(BindRespCommand::carId),
+                                                            rx_packet.data() + sizeof(FrameType) +
+                                                                sizeof(CommandOpcode) +
+                                                                sizeof(BindRespCommand::carId) +
+                                                                sizeof(BindRespCommand::carRandom),
+                                                            sizeof(BindRespCommand::carRandom));
+                                                // 4
+                                                std::memcpy(aes_key.data() + sizeof(device_id) +
+                                                                sizeof(BindRespCommand::carId) +
+                                                                sizeof(BindRespCommand::carRandom),
+                                                            &device_random, sizeof(device_random));
+                                                rx_cipher.setAesKey(aes_key.data());
+
+                                                if (!rx_cipher.init())
+                                                {
+                                                    vTaskDelete(nullptr);
+                                                }
                                                 break;
                                             }
                                             default:
@@ -328,11 +411,6 @@ extern "C" void RadioTask(void* argument)
                                         break;
                                     }
                                 }
-
-                                break;
-                            }
-                            case LoopState::BIND_REQ:
-                            {
                                 break;
                             }
                             case LoopState::BIND_CONFIRM:
@@ -341,6 +419,79 @@ extern "C" void RadioTask(void* argument)
                             }
                             case LoopState::BIND_ACK:
                             {
+                                auto frame_type = static_cast<FrameType>(rx_packet.at(0));
+                                switch (frame_type)
+                                {
+                                    case FrameType::Plain:
+                                    {
+                                        // Error, we expect encrypted type of packet
+                                        break;
+                                    }
+                                    case FrameType::Encrypted:
+                                    {
+                                        CommandOpcode opcode{};
+                                        std::memcpy(&opcode, rx_packet.data() + sizeof(FrameType),
+                                                    sizeof(opcode));
+
+                                        switch (opcode)
+                                        {
+                                            case CommandOpcode::BindAck:
+                                            {
+                                                std::array<uint8_t, Aes128CcmCipher::nonce_length>
+                                                    nonce{};
+                                                std::memcpy(nonce.data(),
+                                                            rx_packet.data() + sizeof(FrameType),
+                                                            Aes128CcmCipher::nonce_length);
+
+                                                std::array<uint8_t, sizeof(BindAckCommand)>
+                                                    encrypted_data{};
+                                                std::memcpy(encrypted_data.data(),
+                                                            rx_packet.data() + sizeof(FrameType) +
+                                                                Aes128CcmCipher::nonce_length,
+                                                            sizeof(BindAckCommand));
+
+                                                std::array<uint8_t, Aes128CcmCipher::tag_length>
+                                                    tag{};
+                                                std::memcpy(tag.data(),
+                                                            rx_packet.data() +
+                                                                Aes128CcmCipher::nonce_length +
+                                                                sizeof(FrameType) +
+                                                                sizeof(BindAckCommand),
+                                                            Aes128CcmCipher::tag_length);
+
+                                                std::array<uint8_t, sizeof(BindAckCommand)>
+                                                    plain_data{};
+                                                if (!rx_cipher.decrypt(nonce,                  //
+                                                                       encrypted_data.data(),  //
+                                                                       encrypted_data.size(),  //
+                                                                       tag,                    //
+                                                                       plain_data.data()))
+                                                {
+                                                    continue;
+                                                }
+
+                                                BindAckCommand bind_ack_cmd{};
+                                                std::memcpy(&bind_ack_cmd,
+                                                            rx_packet.data() + sizeof(FrameType),
+                                                            sizeof(BindAckCommand));
+                                                LOG_INFO("RADIO", "BindAckCommand");
+                                                loopState = LoopState::PING_PONG;
+                                                break;
+                                            }
+                                            default:
+                                            {
+                                                //
+                                                break;
+                                            }
+                                        }
+                                        break;
+                                    }
+                                    default:
+                                    {
+                                        // Error, we expect plain type of packet
+                                        break;
+                                    }
+                                }
                                 break;
                             }
                             case LoopState::PING_PONG:
@@ -352,6 +503,10 @@ extern "C" void RadioTask(void* argument)
                                 break;
                             }
                         }
+                        break;
+                    }
+                    default:
+                    {
                         break;
                     }
                 }
@@ -389,6 +544,35 @@ extern "C" void RadioTask(void* argument)
             {
                 LOG_INFO("RADIO", "OK: TX_DS, sent=%d", tx_counter);
                 nrf.writeRegister(REG_STATUS, STATUS_TX_DS_BIT);
+                switch (loopState)
+                {
+                    case LoopState::IDLE:
+                    {
+                        break;
+                    }
+                    case LoopState::BIND_REQ:
+                    {
+                        loopState = LoopState::BIND_RESP;
+                        break;
+                    }
+                    case LoopState::BIND_CONFIRM:
+                    {
+                        loopState = LoopState::BIND_ACK;
+                        break;
+                    }
+                    case LoopState::BIND_ACK:
+                    {
+                        break;
+                    }
+                    case LoopState::PING_PONG:
+                    {
+                        break;
+                    }
+                    default:
+                    {
+                        break;
+                    }
+                }
                 state = RadioState::RxMode;
             }
             continue;
