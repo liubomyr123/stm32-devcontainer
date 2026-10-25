@@ -87,6 +87,8 @@ class SoftRandom
 enum class LoopState
 {
     IDLE,
+    SEARCHING,
+    BROADCASTING,
     BIND_REQ,
     BIND_RESP,
     BIND_CONFIRM,
@@ -139,11 +141,13 @@ extern "C" void RadioTask(void* argument)
     {
         vTaskDelete(nullptr);
     }
+
     result = nrf.setChannel(SHARED_CHANNEL);
     if (!result)
     {
         vTaskDelete(nullptr);
     }
+
     result = nrf.setTxRfFilterKey(SHARED_RF_FILTER_KEY);
     if (!result)
     {
@@ -163,16 +167,58 @@ extern "C" void RadioTask(void* argument)
         vTaskDelete(nullptr);
     }
 
-    RadioState state = RadioState::TxMode;
-    LoopState loopState = LoopState::BIND_REQ;
+    Role radio_state = Role::TxMode;
+    LoopState loop_state = LoopState::IDLE;
+    uint8_t idle_count = 0;
+
+    // constexpr size_t CAR_ID_LIST_SIZE = 4;
+    // std::array<uint32_t, CAR_ID_LIST_SIZE> car_id_list{};
+    // unsigned int car_id_list_length = 0;
+
+    constexpr uint32_t CAR_ID_TO_CONNECT = 1;
+    bool found_target_car = false;
+
+    std::array<uint8_t, 16> tx_packet{};
+    std::array<uint8_t, 16> rx_packet{};
+
     while (true)
     {
-        std::array<uint8_t, 16> tx_packet{};
-        std::array<uint8_t, 16> rx_packet{};
-        switch (loopState)
+        switch (loop_state)
         {
             case LoopState::IDLE:
             {
+                if (idle_count == 5)  // Just for testing
+                {
+                    if (radio_state == Role::TxMode)
+                    {
+                        loop_state = LoopState::SEARCHING;
+                    }
+                    else if (radio_state == Role::RxMode)
+                    {
+                        loop_state = LoopState::BROADCASTING;
+                    }
+                }
+                else
+                {
+                    idle_count++;
+                    osDelay(1000);
+                }
+                continue;
+            }
+            case LoopState::SEARCHING:  // TxMode
+            {
+                tx_packet.fill(0);
+                rx_packet.fill(0);
+
+                radio_state = Role::RxMode;
+
+                break;
+            }
+            case LoopState::BROADCASTING:  // RxMode
+            {
+                tx_packet.fill(0);
+                rx_packet.fill(0);
+
                 break;
             }
             case LoopState::BIND_REQ:
@@ -180,9 +226,17 @@ extern "C" void RadioTask(void* argument)
                 tx_packet.fill(0);
                 rx_packet.fill(0);
 
+                if (!found_target_car)
+                {
+                    radio_state = Role::RxMode;
+                    loop_state = LoopState::SEARCHING;
+                    continue;
+                }
+
                 BindReqCommand bind_req_cmd{};
                 bind_req_cmd.remoteId = nrf.getDeviceId();
                 bind_req_cmd.remoteRandom = nrf.getDeviceRandom();
+                bind_req_cmd.targetCarId = CAR_ID_TO_CONNECT;
 
                 tx_packet[0] = static_cast<uint8_t>(FrameType::Plain);
                 std::memcpy(tx_packet.data() + 1, &bind_req_cmd, sizeof(bind_req_cmd));
@@ -228,9 +282,9 @@ extern "C" void RadioTask(void* argument)
             continue;
         }
 
-        switch (state)
+        switch (radio_state)
         {
-            case RadioState::TxMode:
+            case Role::TxMode:
             {
                 auto frame_type = static_cast<FrameType>(tx_packet.at(0));
 
@@ -247,8 +301,11 @@ extern "C" void RadioTask(void* argument)
                     case FrameType::Encrypted:
                     {
                         std::array<uint8_t, 16> encrypted_tx_packet{};
-                        if (!tx_cipher.encrypt(tx_packet.data(), tx_packet.size(),
-                                               encrypted_tx_packet.data()))
+                        encrypted_tx_packet[0] = static_cast<uint8_t>(FrameType::Encrypted);
+
+                        if (!tx_cipher.encrypt(tx_packet.data() + sizeof(FrameType),
+                                               tx_packet.size() - sizeof(FrameType),
+                                               encrypted_tx_packet.data() + sizeof(FrameType)))
                         {
                             continue;
                         }
@@ -284,7 +341,7 @@ extern "C" void RadioTask(void* argument)
                 }
                 break;
             }
-            case RadioState::RxMode:
+            case Role::RxMode:
             {
                 if (!nrf.startRx())
                 {
@@ -292,10 +349,6 @@ extern "C" void RadioTask(void* argument)
                 }
                 break;
             }
-            case RadioState::Unknown:
-            case RadioState::StandbyI:
-            case RadioState::StandbyII:
-            case RadioState::PowerDown:
             default:
                 break;
         }
@@ -313,18 +366,88 @@ extern "C" void RadioTask(void* argument)
                     continue;
                 }
 
-                switch (state)
+                switch (radio_state)
                 {
-                    case RadioState::TxMode:
+                    case Role::TxMode:
                     {
                         break;
                     }
-                    case RadioState::RxMode:
+                    case Role::RxMode:
                     {
-                        switch (loopState)
+                        switch (loop_state)
                         {
                             case LoopState::IDLE:
                             {
+                                break;
+                            }
+                            case LoopState::SEARCHING:
+                            {
+                                auto frame_type = static_cast<FrameType>(rx_packet.at(0));
+                                switch (frame_type)
+                                {
+                                    case FrameType::Plain:
+                                    {
+                                        CommandOpcode opcode{};
+                                        std::memcpy(&opcode, rx_packet.data() + sizeof(FrameType),
+                                                    sizeof(opcode));
+
+                                        switch (opcode)
+                                        {
+                                            case CommandOpcode::CarId:
+                                            {
+                                                CarIdCommand bind_res_cmd{};
+                                                std::memcpy(&bind_res_cmd,
+                                                            rx_packet.data() + sizeof(FrameType),
+                                                            sizeof(CarIdCommand));
+                                                LOG_INFO("RADIO", "car_id=%d", bind_res_cmd.carId);
+                                                if (bind_res_cmd.carId == CAR_ID_TO_CONNECT)
+                                                {
+                                                    found_target_car = true;
+                                                    radio_state = Role::TxMode;
+                                                    loop_state = LoopState::BIND_REQ;
+                                                }
+
+                                                // if (car_id_list_length < 4)
+                                                // {
+                                                //     bool found = false;
+                                                //     for (size_t i = 0; i < CAR_ID_LIST_SIZE; i++)
+                                                //     {
+                                                //         if (car_id_list.at(i) ==
+                                                //         bind_res_cmd.carId)
+                                                //         {
+                                                //             found = true;
+                                                //             break;
+                                                //         }
+                                                //     }
+                                                //     if (!found)
+                                                //     {
+                                                //         car_id_list.at(car_id_list_length) =
+                                                //             bind_res_cmd.carId;
+                                                //         car_id_list_length++;
+                                                //     }
+                                                // }
+
+                                                break;
+                                            }
+                                            default:
+                                            {
+                                                //
+                                                break;
+                                            }
+                                        }
+                                        break;
+                                    }
+                                    case FrameType::Encrypted:
+                                    {
+                                        // Error, we expect plain type of packet
+                                        break;
+                                    }
+                                    default:
+                                    {
+                                        // Error, we expect plain type of packet
+                                        break;
+                                    }
+                                }
                                 break;
                             }
                             case LoopState::BIND_REQ:
@@ -355,7 +478,12 @@ extern "C" void RadioTask(void* argument)
                                                          "remoteRandomEcho=%d",
                                                          bind_res_cmd.carId, bind_res_cmd.carRandom,
                                                          bind_res_cmd.remoteRandomEcho);
-                                                loopState = LoopState::BIND_CONFIRM;
+
+                                                if (bind_res_cmd.remoteRandomEcho != device_id)
+                                                {
+                                                    // Error
+                                                    break;
+                                                }
 
                                                 // crating key_remote_to_car and init cipher
                                                 //  [remote_id 4][car_id 4][R1 4][R2 4], де блок[0]
@@ -384,12 +512,27 @@ extern "C" void RadioTask(void* argument)
                                                                 sizeof(BindRespCommand::carId) +
                                                                 sizeof(BindRespCommand::carRandom),
                                                             &device_random, sizeof(device_random));
-                                                rx_cipher.setAesKey(aes_key.data());
 
-                                                if (!rx_cipher.init())
                                                 {
-                                                    vTaskDelete(nullptr);
+                                                    aes_key.at(0) ^= 1;
+                                                    rx_cipher.setAesKey(aes_key.data());
+
+                                                    if (!rx_cipher.init())
+                                                    {
+                                                        vTaskDelete(nullptr);
+                                                    }
                                                 }
+                                                {
+                                                    aes_key.at(0) ^= 0;
+                                                    tx_cipher.setAesKey(aes_key.data());
+
+                                                    if (!tx_cipher.init())
+                                                    {
+                                                        vTaskDelete(nullptr);
+                                                    }
+                                                }
+                                                radio_state = Role::TxMode;
+                                                loop_state = LoopState::BIND_CONFIRM;
                                                 break;
                                             }
                                             default:
@@ -475,7 +618,7 @@ extern "C" void RadioTask(void* argument)
                                                             rx_packet.data() + sizeof(FrameType),
                                                             sizeof(BindAckCommand));
                                                 LOG_INFO("RADIO", "BindAckCommand");
-                                                loopState = LoopState::PING_PONG;
+                                                loop_state = LoopState::PING_PONG;
                                                 break;
                                             }
                                             default:
@@ -538,13 +681,13 @@ extern "C" void RadioTask(void* argument)
                 // LOG_INFO("RADIO", "OK: RX_DR, received=%d", received_cmd.counter);
                 // tx_counter = received_cmd.counter + 1;
                 // LOG_INFO("RADIO", "Next tx_counter=%d", tx_counter);
-                state = RadioState::TxMode;
+                // radio_state = Role::TxMode;
             }
             if ((status & STATUS_TX_DS_BIT) != 0)
             {
                 LOG_INFO("RADIO", "OK: TX_DS, sent=%d", tx_counter);
                 nrf.writeRegister(REG_STATUS, STATUS_TX_DS_BIT);
-                switch (loopState)
+                switch (loop_state)
                 {
                     case LoopState::IDLE:
                     {
@@ -552,12 +695,12 @@ extern "C" void RadioTask(void* argument)
                     }
                     case LoopState::BIND_REQ:
                     {
-                        loopState = LoopState::BIND_RESP;
+                        loop_state = LoopState::BIND_RESP;
                         break;
                     }
                     case LoopState::BIND_CONFIRM:
                     {
-                        loopState = LoopState::BIND_ACK;
+                        loop_state = LoopState::BIND_ACK;
                         break;
                     }
                     case LoopState::BIND_ACK:
@@ -573,20 +716,20 @@ extern "C" void RadioTask(void* argument)
                         break;
                     }
                 }
-                state = RadioState::RxMode;
+                radio_state = Role::RxMode;
             }
             continue;
         }
 
         LOG_ERROR("RADIO", "FAILED: no IRQ within %lums", IRQ_WAIT_TIMEOUT_MS);
 
-        if (state == RadioState::TxMode)
+        if (radio_state == Role::TxMode)
         {
             nrf.sendCommand(FLUSH_TX);
         }
-        if (state == RadioState::RxMode)
+        if (radio_state == Role::RxMode)
         {
-            state = RadioState::TxMode;
+            radio_state = Role::TxMode;
         }
     }
 }

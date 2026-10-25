@@ -139,6 +139,12 @@ enum class RadioState
     PowerDown
 };
 
+enum class Role
+{
+    TxMode,
+    RxMode,
+};
+
 class Nrf24Radio
 {
    public:

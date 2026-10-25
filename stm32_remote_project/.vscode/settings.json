@@ -14,5 +14,6 @@
     "editor.formatOnSave": true,
     "clangd.fallbackFlags": [
         "--std=c++17"
-    ]
+    ],
+    "cmake.sourceDirectory": "/workspace/stm32_remote_project/stm32/Drivers/CMSIS/DSP/Source/DistanceFunctions"
 }

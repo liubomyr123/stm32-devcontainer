@@ -62,6 +62,7 @@ enum class FrameType : uint8_t
 enum class CommandOpcode : uint8_t
 {
     PingPong = 0x01,
+    CarId,        // car to remote
     BindReq,      // remote to car
     BindResp,     // car to remote
     BindConfirm,  // remote to car
@@ -80,7 +81,8 @@ struct BindReqCommand
     CommandOpcode opcode = CommandOpcode::BindReq;  // 1
     uint32_t remoteId = 0;                          // 4
     uint32_t remoteRandom = 0;                      // 4
-};                                                  // total: 9
+    uint32_t targetCarId = 0;                       // 4
+};                                                  // total: 13
 
 struct BindRespCommand
 {
@@ -100,10 +102,17 @@ struct BindAckCommand
     CommandOpcode opcode = CommandOpcode::BindAck;  // 1
 };                                                  // total: 1
 
+struct CarIdCommand
+{
+    CommandOpcode opcode = CommandOpcode::CarId;  // 1
+    uint32_t carId = 0;                           // 4
+};                                                // total: 5
+
 #pragma pack(pop)
 
 static_assert(sizeof(PingPongCommand) == 2, "unexpected padding in PingPongCommand");
-static_assert(sizeof(BindReqCommand) == 9, "unexpected padding in BindReqCommand");
+static_assert(sizeof(BindReqCommand) == 13, "unexpected padding in BindReqCommand");
 static_assert(sizeof(BindRespCommand) == 13, "unexpected padding in BindRespCommand");
 static_assert(sizeof(BindConfirmCommand) == 1, "unexpected padding in BindConfirmCommand");
 static_assert(sizeof(BindAckCommand) == 1, "unexpected padding in BindAckCommand");
+static_assert(sizeof(CarIdCommand) == 5, "unexpected padding in BindAckCommand");
