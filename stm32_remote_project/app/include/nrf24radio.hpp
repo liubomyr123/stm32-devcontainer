@@ -6,6 +6,15 @@
 #include "cmsis_os2.h"
 #include "include/logger.hpp"
 
+#define NRF_CSN_PORT GPIOB
+#define NRF_CSN_PIN GPIO_PIN_1
+
+#define NRF_CE_PORT GPIOB
+#define NRF_CE_PIN GPIO_PIN_0
+
+#define NRF24_IRQ_PIN GPIO_PIN_10
+#define NRF24_IRQ_FLAG (1UL << 0)
+
 // Час, необхідний nRF24 на завершення внутрішнього power-on reset
 // (datasheet, Table 14 "Power on reset", TPOR: max 100ms від моменту
 // досягнення VDD 1.9V до готовності регістрів).
