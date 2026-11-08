@@ -154,6 +154,8 @@ enum class Role
     RxMode,
 };
 
+constexpr uint8_t RX_PAYLOAD_LENGTH = 16;
+
 class Nrf24Radio
 {
    public:

@@ -1,6 +1,7 @@
 #include "radio_car.hpp"
 
 #include "logger.hpp"
+#include "nrf24radio.hpp"
 
 bool RadioCar::init()
 {
@@ -33,7 +34,7 @@ bool RadioCar::init()
         return false;
     }
 
-    result = nrf_.setRxPayloadLength(16);
+    result = nrf_.setRxPayloadLength(RX_PAYLOAD_LENGTH);
     if (!result)
     {
         return false;
@@ -84,20 +85,8 @@ bool RadioCar::update_loop_state()
             tx_packet_.fill(0);
             rx_packet_.fill(0);
 
-            if (!found_target_car)
-            {
-                radio_state_ = Role::RxMode;
-                loop_state_ = CarLoopState::SEARCHING;
-                continue;
-            }
+            LOG_INFO(TAG, "Start listening BIND_REQ for %d", RadioCar::LISTENING_TIME_MS);
 
-            BindReqCommand bind_req_cmd{};
-            bind_req_cmd.remoteId = nrf_.getDeviceId();
-            bind_req_cmd.remoteRandom = nrf_.getDeviceRandom();
-            bind_req_cmd.targetCarId = CAR_ID_TO_CONNECT;
-
-            tx_packet_[0] = static_cast<uint8_t>(FrameType::Plain);
-            std::memcpy(tx_packet_.data() + 1, &bind_req_cmd, sizeof(bind_req_cmd));
             break;
         }
         case CarLoopState::BIND_RESP:
@@ -223,17 +212,19 @@ bool RadioCar::handle_flags()
 {
     uint8_t status = nrf_.readRegister(REG_STATUS);
 
+    bool result = true;
+
     if ((status & STATUS_RX_DR_BIT) != 0)
     {
-        handle_rx();
+        result = handle_rx();
     }
 
     if ((status & STATUS_TX_DS_BIT) != 0)
     {
-        handle_tx();
+        result = handle_tx();
     }
 
-    return true;
+    return result;
 }
 
 void RadioCar::handle_no_flags()
@@ -253,10 +244,10 @@ bool RadioCar::handle_rx()
     if (!nrf_.receive(rx_packet_.data(), static_cast<uint8_t>(rx_packet_.size())))
     {
         LOG_ERROR("RADIO", "receive() failed unexpectedly despite RX_DR set");
-        continue;
+        return false;
     }
 
-    switch (radio_state)
+    switch (radio_state_)
     {
         case Role::TxMode:
         {
@@ -264,87 +255,59 @@ bool RadioCar::handle_rx()
         }
         case Role::RxMode:
         {
-            switch (loop_state)
+            switch (loop_state_)
             {
-                case LoopState::IDLE:
+                case CarLoopState::IDLE:
                 {
                     break;
                 }
-                case LoopState::SEARCHING:
+                case CarLoopState::BIND_REQ:
                 {
                     auto frame_type = static_cast<FrameType>(rx_packet_.at(0));
-                    switch (frame_type)
+                    if (frame_type == FrameType::Plain)
                     {
-                        case FrameType::Plain:
-                        {
-                            CommandOpcode opcode{};
-                            std::memcpy(&opcode, rx_packet_.data() + sizeof(FrameType),
-                                        sizeof(opcode));
+                        CommandOpcode opcode{};
+                        std::memcpy(&opcode,                                // dest
+                                    rx_packet_.data() + sizeof(FrameType),  // src
+                                    sizeof(CommandOpcode)                   // size
+                        );
 
-                            switch (opcode)
+                        switch (opcode)
+                        {
+                            case CommandOpcode::BindReq:
                             {
-                                case CommandOpcode::CarId:
-                                {
-                                    CarIdCommand bind_res_cmd{};
-                                    std::memcpy(&bind_res_cmd,
-                                                rx_packet_.data() + sizeof(FrameType),
-                                                sizeof(CarIdCommand));
-                                    LOG_INFO("RADIO", "car_id=%d", bind_res_cmd.carId);
-                                    if (bind_res_cmd.carId == CAR_ID_TO_CONNECT)
-                                    {
-                                        found_target_car = true;
-                                        radio_state = Role::TxMode;
-                                        loop_state = LoopState::BIND_REQ;
-                                    }
+                                BindReqCommand cmd{};
+                                std::memcpy(&cmd,                                   // dest
+                                            rx_packet_.data() + sizeof(FrameType),  // src
+                                            sizeof(BindReqCommand)                  // size
+                                );
+                                LOG_INFO(TAG, "remoteId=%d", cmd.remoteId);
+                                LOG_INFO(TAG, "remoteRandom=%d", cmd.remoteRandom);
+                                LOG_INFO(TAG, "targetCarId", cmd.targetCarId);
 
-                                    // if (car_id_list_length < 4)
-                                    // {
-                                    //     bool found = false;
-                                    //     for (size_t i = 0; i < CAR_ID_LIST_SIZE; i++)
-                                    //     {
-                                    //         if (car_id_list.at(i) ==
-                                    //         bind_res_cmd.carId)
-                                    //         {
-                                    //             found = true;
-                                    //             break;
-                                    //         }
-                                    //     }
-                                    //     if (!found)
-                                    //     {
-                                    //         car_id_list.at(car_id_list_length) =
-                                    //             bind_res_cmd.carId;
-                                    //         car_id_list_length++;
-                                    //     }
-                                    // }
-
-                                    break;
-                                }
-                                default:
+                                if (cmd.targetCarId == device_id_)
                                 {
-                                    //
-                                    break;
+                                    LOG_INFO(TAG, "Remote found correct car.");
                                 }
+                                else
+                                {
+                                    LOG_WARNING(TAG, "Remote is searching for another car id.");
+                                }
+                                break;
                             }
-                            break;
+                            default:
+                            {
+                                break;
+                            }
                         }
-                        case FrameType::Encrypted:
-                        {
-                            // Error, we expect plain type of packet
-                            break;
-                        }
-                        default:
-                        {
-                            // Error, we expect plain type of packet
-                            break;
-                        }
+                    }
+                    else
+                    {
+                        // error
                     }
                     break;
                 }
-                case LoopState::BIND_REQ:
-                {
-                    break;
-                }
-                case LoopState::BIND_RESP:
+                case CarLoopState::BIND_RESP:
                 {
                     auto frame_type = static_cast<FrameType>(rx_packet_.at(0));
                     switch (frame_type)
@@ -421,7 +384,7 @@ bool RadioCar::handle_rx()
                                         }
                                     }
                                     radio_state = Role::TxMode;
-                                    loop_state = LoopState::BIND_CONFIRM;
+                                    loop_state = CarLoopState::BIND_CONFIRM;
                                     break;
                                 }
                                 default:
@@ -445,11 +408,11 @@ bool RadioCar::handle_rx()
                     }
                     break;
                 }
-                case LoopState::BIND_CONFIRM:
+                case CarLoopState::BIND_CONFIRM:
                 {
                     break;
                 }
-                case LoopState::BIND_ACK:
+                case CarLoopState::BIND_ACK:
                 {
                     auto frame_type = static_cast<FrameType>(rx_packet_.at(0));
                     switch (frame_type)
@@ -500,7 +463,7 @@ bool RadioCar::handle_rx()
                                                 rx_packet_.data() + sizeof(FrameType),
                                                 sizeof(BindAckCommand));
                                     LOG_INFO("RADIO", "BindAckCommand");
-                                    loop_state = LoopState::PING_PONG;
+                                    loop_state = CarLoopState::PING_PONG;
                                     break;
                                 }
                                 default:
@@ -519,7 +482,7 @@ bool RadioCar::handle_rx()
                     }
                     break;
                 }
-                case LoopState::PING_PONG:
+                case CarLoopState::PING_PONG:
                 {
                     break;
                 }
@@ -538,34 +501,46 @@ bool RadioCar::handle_rx()
 
     // "Write 1 to clear bit" (Table 28)
     nrf_.writeRegister(REG_STATUS, STATUS_RX_DR_BIT);
+
+    return true;
 }
 
 bool RadioCar::handle_tx()
 {
-    LOG_INFO("RADIO", "OK: TX_DS, sent=%d", tx_counter);
+    LOG_INFO(TAG, "OK: TX_DS");
     nrf_.writeRegister(REG_STATUS, STATUS_TX_DS_BIT);
 
-    switch (loop_state)
+    switch (loop_state_)
     {
-        case LoopState::IDLE:
+        case CarLoopState::IDLE:
         {
             break;
         }
-        case LoopState::BIND_REQ:
+        case CarLoopState::BROADCASTING:
         {
-            loop_state = LoopState::BIND_RESP;
+            radio_state_ = Role::RxMode;
+            loop_state_ = CarLoopState::BIND_REQ;
             break;
         }
-        case LoopState::BIND_CONFIRM:
+        case CarLoopState::BIND_REQ:
         {
-            loop_state = LoopState::BIND_ACK;
+            loop_state_ = CarLoopState::BIND_RESP;
             break;
         }
-        case LoopState::BIND_ACK:
+        case CarLoopState::BIND_RESP:
         {
             break;
         }
-        case LoopState::PING_PONG:
+        case CarLoopState::BIND_CONFIRM:
+        {
+            loop_state_ = CarLoopState::BIND_ACK;
+            break;
+        }
+        case CarLoopState::BIND_ACK:
+        {
+            break;
+        }
+        case CarLoopState::PING_PONG:
         {
             break;
         }
@@ -574,5 +549,5 @@ bool RadioCar::handle_tx()
             break;
         }
     }
-    radio_state = Role::RxMode;
+    return true;
 }

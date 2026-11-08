@@ -56,6 +56,7 @@ class RadioCar
 
    private:
     static constexpr const char* TAG = "RADIO_CAR";
+    static constexpr const uint8_t LISTENING_TIME_MS = 5;
 
     bool update_loop_state();
     bool run_radio();
