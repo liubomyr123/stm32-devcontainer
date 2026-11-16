@@ -4,7 +4,6 @@
 extern SPI_HandleTypeDef hspi1;
 extern osThreadId_t RadioTaskHandle;
 
-constexpr uint32_t IRQ_WAIT_TIMEOUT_MS = 50;
 constexpr std::array<uint8_t, 5> SHARED_RF_FILTER_KEY = {0xE7, 0xE7, 0xE7, 0xE7, 0xE7};
 constexpr uint8_t SHARED_CHANNEL = 100;
 
@@ -42,13 +41,16 @@ extern "C" void RadioTask(void* argument)
             continue;
         }
 
-        uint32_t flags = osThreadFlagsWait(NRF24_IRQ_FLAG, osFlagsWaitAny, IRQ_WAIT_TIMEOUT_MS);
+        uint32_t flags = osThreadFlagsWait(NRF24_IRQ_FLAG,  //
+                                           osFlagsWaitAny,  //
+                                           radio.remaining_ms());
         if (flags == NRF24_IRQ_FLAG)
         {
             if (!radio.handle_flags())
             {
-                continue;
+                // ...
             }
+            continue;
         }
 
         LOG_ERROR("RADIO", "FAILED: no IRQ within %lums", IRQ_WAIT_TIMEOUT_MS);

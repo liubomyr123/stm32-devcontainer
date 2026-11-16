@@ -6,7 +6,10 @@
 
 #include "aes128ccm_cipher.hpp"
 #include "commands.hpp"
+#include "logger.hpp"
 #include "nrf24radio.hpp"
+
+constexpr uint32_t IRQ_WAIT_TIMEOUT_MS = 50;
 
 enum class CarLoopState
 {
@@ -26,6 +29,7 @@ class RadioCar
     bool update();
     bool handle_flags();
     void handle_no_flags();
+    uint32_t remaining_ms() const;
 
     Nrf24Radio* get_nrf()
     {
@@ -56,7 +60,7 @@ class RadioCar
 
    private:
     static constexpr const char* TAG = "RADIO_CAR";
-    static constexpr const uint8_t LISTENING_TIME_MS = 5;
+    static constexpr const uint16_t LISTENING_TIME_MS = 5000;
 
     bool update_loop_state();
     bool run_radio();
@@ -78,4 +82,10 @@ class RadioCar
 
     std::array<uint8_t, 16> tx_packet_{0};
     std::array<uint8_t, 16> rx_packet_{0};
+
+    uint32_t remote_id_{0};
+    uint32_t remote_random_{0};
+    uint32_t target_car_id_{0};
+
+    uint32_t bind_req_deadline_ms_{0};
 };

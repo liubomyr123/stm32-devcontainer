@@ -64,6 +64,8 @@ constexpr uint8_t STATUS_TX_DS_BIT = 1 << 5;
 constexpr uint8_t STATUS_MAX_RT_BIT = 1 << 4;
 constexpr uint8_t STATUS_TX_FULL_BIT = 1 << 0;
 
+constexpr uint8_t STATUS_IRQ_MASK = STATUS_RX_DR_BIT | STATUS_TX_DS_BIT | STATUS_MAX_RT_BIT;
+
 constexpr uint8_t REG_OBSERVE_TX = 0x08;  // Transmit observe register
 constexpr uint8_t REG_RPD = 0x09;         // Received Power Detector
 constexpr uint8_t REG_RX_ADDR_P0 = 0x0A;  // Receive address data pipe 0 (5 байт)
