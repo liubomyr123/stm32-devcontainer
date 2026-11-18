@@ -85,7 +85,6 @@ class RadioCar
 
     uint32_t remote_id_{0};
     uint32_t remote_random_{0};
-    uint32_t target_car_id_{0};
 
-    uint32_t bind_req_deadline_ms_{0};
+    uint32_t listening_deadline_ms_{0};
 };

@@ -1,7 +1,5 @@
 #include "radio_car.hpp"
 
-#include "stm32f4xx_hal.h"
-
 bool RadioCar::init()
 {
     if (!nrf_.init())
@@ -46,6 +44,8 @@ bool RadioCar::init()
 
 bool RadioCar::update_loop_state()
 {
+    bool is_run_radio = true;
+
     switch (loop_state_)
     {
         case CarLoopState::IDLE:
@@ -63,7 +63,8 @@ bool RadioCar::update_loop_state()
                 idle_count_ = 0;
                 LOG_INFO(TAG, "Switching to broadcasting...");
             }
-            return false;
+            is_run_radio = false;
+            break;
         }
         case CarLoopState::BROADCASTING:
         {
@@ -78,16 +79,41 @@ bool RadioCar::update_loop_state()
             tx_packet_[0] = static_cast<uint8_t>(FrameType::Plain);
             std::memcpy(tx_packet_.data() + sizeof(FrameType), &cmd, sizeof(cmd));
 
+            is_run_radio = true;
             break;
         }
         case CarLoopState::BIND_REQ:
         {
             tx_packet_.fill(0);
             rx_packet_.fill(0);
+
+            is_run_radio = true;
             break;
         }
         case CarLoopState::BIND_RESP:
+        {
+            tx_packet_.fill(0);
+            rx_packet_.fill(0);
+
+            BindRespCommand cmd{};
+            cmd.carId = device_id_;
+            cmd.carRandom = device_random_;
+            cmd.remoteRandomEcho = remote_random_;
+
+            tx_packet_[0] = static_cast<uint8_t>(FrameType::Plain);
+            std::memcpy(tx_packet_.data() + sizeof(FrameType), &cmd, sizeof(cmd));
+
+            is_run_radio = true;
+            break;
+        }
         case CarLoopState::BIND_CONFIRM:
+        {
+            tx_packet_.fill(0);
+            rx_packet_.fill(0);
+
+            is_run_radio = true;
+            break;
+        }
         case CarLoopState::BIND_ACK:
         case CarLoopState::PING_PONG:
         default:
@@ -95,7 +121,7 @@ bool RadioCar::update_loop_state()
             break;
         }
     }
-    return true;
+    return is_run_radio;
 };
 
 bool RadioCar::run_radio()
@@ -216,20 +242,24 @@ void RadioCar::handle_no_flags()
 
         switch (loop_state_)
         {
-            case CarLoopState::IDLE:
-            {
-                break;
-            }
             case CarLoopState::BROADCASTING:
             {
+                LOG_INFO(TAG, "Start listening BIND_REQ for %dms", RadioCar::LISTENING_TIME_MS);
+
                 radio_state_ = Role::RxMode;
                 loop_state_ = CarLoopState::BIND_REQ;
-                LOG_INFO(TAG, "Start listening BIND_REQ for %d", RadioCar::LISTENING_TIME_MS);
-                bind_req_deadline_ms_ = HAL_GetTick() + RadioCar::LISTENING_TIME_MS;
+                listening_deadline_ms_ = HAL_GetTick() + RadioCar::LISTENING_TIME_MS;
                 break;
             }
-            case CarLoopState::BIND_REQ:
             case CarLoopState::BIND_RESP:
+            {
+                LOG_ERROR(TAG, "BIND_RESP: chip did not report TX_DS, back to broadcasting");
+                radio_state_ = Role::TxMode;
+                loop_state_ = CarLoopState::BROADCASTING;
+                break;
+            }
+            case CarLoopState::IDLE:
+            case CarLoopState::BIND_REQ:
             case CarLoopState::BIND_CONFIRM:
             case CarLoopState::BIND_ACK:
             case CarLoopState::PING_PONG:
@@ -243,20 +273,25 @@ void RadioCar::handle_no_flags()
     {
         switch (loop_state_)
         {
-            case CarLoopState::IDLE:
-            case CarLoopState::BROADCASTING:
-            {
-                break;
-            }
             case CarLoopState::BIND_REQ:
             {
-                LOG_INFO(TAG, "Listening window over, back to broadcasting");
+                LOG_INFO(TAG, "BIND_REQ timeout, back to broadcasting");
+
                 radio_state_ = Role::TxMode;
                 loop_state_ = CarLoopState::BROADCASTING;
                 break;
             }
-            case CarLoopState::BIND_RESP:
             case CarLoopState::BIND_CONFIRM:
+            {
+                LOG_INFO(TAG, "BIND_CONFIRM timeout, back to broadcasting");
+
+                radio_state_ = Role::TxMode;
+                loop_state_ = CarLoopState::BROADCASTING;
+                break;
+            }
+            case CarLoopState::IDLE:
+            case CarLoopState::BROADCASTING:
+            case CarLoopState::BIND_RESP:
             case CarLoopState::BIND_ACK:
             case CarLoopState::PING_PONG:
             default:
@@ -286,10 +321,6 @@ bool RadioCar::handle_rx()
 
     switch (loop_state_)
     {
-        case CarLoopState::IDLE:
-        {
-            break;
-        }
         case CarLoopState::BIND_REQ:
         {
             auto frame_type = static_cast<FrameType>(rx_packet_.at(0));
@@ -310,6 +341,7 @@ bool RadioCar::handle_rx()
                                     rx_packet_.data() + sizeof(FrameType),  // src
                                     sizeof(BindReqCommand)                  // size
                         );
+                        LOG_INFO(TAG, "RX BindReq: OK");
                         LOG_INFO(TAG, "remoteId=%lu", cmd.remoteId);
                         LOG_INFO(TAG, "remoteRandom=%lu", cmd.remoteRandom);
                         LOG_INFO(TAG, "targetCarId=%lu", cmd.targetCarId);
@@ -320,7 +352,6 @@ bool RadioCar::handle_rx()
 
                             remote_id_ = cmd.remoteId;
                             remote_random_ = cmd.remoteRandom;
-                            target_car_id_ = cmd.targetCarId;
 
                             radio_state_ = Role::TxMode;
                             loop_state_ = CarLoopState::BIND_RESP;
@@ -328,6 +359,7 @@ bool RadioCar::handle_rx()
                         else
                         {
                             LOG_WARNING(TAG, "Remote is searching for another car id.");
+
                             radio_state_ = Role::RxMode;
                             loop_state_ = CarLoopState::BIND_REQ;
                         }
@@ -335,14 +367,51 @@ bool RadioCar::handle_rx()
                     }
                     default:
                     {
+                        LOG_WARNING(TAG, "RX BindReq: wrong command");
                         break;
                     }
                 }
             }
             break;
         }
-        case CarLoopState::BIND_RESP:
         case CarLoopState::BIND_CONFIRM:
+        {
+            auto frame_type = static_cast<FrameType>(rx_packet_.at(0));
+            if (frame_type == FrameType::Plain)
+            {
+                CommandOpcode opcode{};
+                std::memcpy(&opcode,                                // dest
+                            rx_packet_.data() + sizeof(FrameType),  // src
+                            sizeof(CommandOpcode)                   // size
+                );
+
+                switch (opcode)
+                {
+                    case CommandOpcode::BindConfirm:
+                    {
+                        BindConfirmCommand cmd{};
+                        std::memcpy(&cmd,                                   // dest
+                                    rx_packet_.data() + sizeof(FrameType),  // src
+                                    sizeof(BindConfirmCommand)              // size
+                        );
+
+                        LOG_INFO(TAG, "RX BindConfirm: OK");
+
+                        radio_state_ = Role::TxMode;
+                        loop_state_ = CarLoopState::BIND_ACK;
+                        break;
+                    }
+                    default:
+                    {
+                        LOG_WARNING(TAG, "RX BindConfirm: wrong command");
+                        break;
+                    }
+                }
+            }
+            break;
+        }
+        case CarLoopState::IDLE:
+        case CarLoopState::BIND_RESP:
         case CarLoopState::BIND_ACK:
         case CarLoopState::PING_PONG:
         default:
@@ -367,21 +436,26 @@ bool RadioCar::handle_tx()
 
     switch (loop_state_)
     {
-        case CarLoopState::IDLE:
-        {
-            break;
-        }
         case CarLoopState::BROADCASTING:
         {
-            LOG_INFO(TAG, "Start listening BIND_REQ for %d", RadioCar::LISTENING_TIME_MS);
+            LOG_INFO(TAG, "Start listening BIND_REQ for %dms", RadioCar::LISTENING_TIME_MS);
 
             radio_state_ = Role::RxMode;
             loop_state_ = CarLoopState::BIND_REQ;
-            bind_req_deadline_ms_ = HAL_GetTick() + RadioCar::LISTENING_TIME_MS;
+            listening_deadline_ms_ = HAL_GetTick() + RadioCar::LISTENING_TIME_MS;
             break;
         }
-        case CarLoopState::BIND_REQ:
         case CarLoopState::BIND_RESP:
+        {
+            LOG_INFO(TAG, "Start listening BIND_CONFIRM for %dms", RadioCar::LISTENING_TIME_MS);
+
+            radio_state_ = Role::RxMode;
+            loop_state_ = CarLoopState::BIND_CONFIRM;
+            listening_deadline_ms_ = HAL_GetTick() + RadioCar::LISTENING_TIME_MS;
+            break;
+        }
+        case CarLoopState::IDLE:
+        case CarLoopState::BIND_REQ:
         case CarLoopState::BIND_CONFIRM:
         case CarLoopState::BIND_ACK:
         case CarLoopState::PING_PONG:
@@ -396,11 +470,17 @@ bool RadioCar::handle_tx()
 
 uint32_t RadioCar::remaining_ms() const
 {
-    if (loop_state_ == CarLoopState::BIND_REQ)
+    switch (loop_state_)
     {
-        auto left = static_cast<int32_t>(bind_req_deadline_ms_ - HAL_GetTick());
-        return (left > 0) ? static_cast<uint32_t>(left) : 0;
+        case CarLoopState::BIND_REQ:
+        case CarLoopState::BIND_CONFIRM:
+        {
+            auto left = static_cast<int32_t>(listening_deadline_ms_ - HAL_GetTick());
+            return (left > 0) ? static_cast<uint32_t>(left) : 0;
+        }
+        default:
+        {
+            return IRQ_WAIT_TIMEOUT_MS;
+        }
     }
-
-    return IRQ_WAIT_TIMEOUT_MS;
 }

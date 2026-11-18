@@ -53,7 +53,6 @@ extern "C" void RadioTask(void* argument)
             continue;
         }
 
-        LOG_ERROR("RADIO", "FAILED: no IRQ within %lums", IRQ_WAIT_TIMEOUT_MS);
         radio.handle_no_flags();
     }
 }
